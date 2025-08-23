@@ -37,7 +37,7 @@ export function generateMap(
   },
 ) {
   mapGeneratorOptionsSchema.parse(opts)
-  let blocks: BlockMap = []
+  const blocks: BlockMap = []
   //const maxTeleporterCount = Math.random() < 0.5 ? 1 : 2
   const halfWidth = Math.floor(width / 2)
 
@@ -111,12 +111,27 @@ export function generateMap(
     })
   }
 
+  const cleanMap = cleanUpMap(blocks)
+  if (!cleanMap) {
+    return generateMap(opts)
+  }
+
+  return cleanMap
+}
+
+function cleanUpMap(blocks: BlockMap): BlockMap | null {
   blocks = cleanMiddleAisle(blocks)
   blocks = cleanUpOrphans(blocks)
-  blocks = connectDisconnectedRegions(blocks)
-  blocks = duplicateMapHalf(blocks)
 
-  return blocks
+  // There is a VERY rare chance that the remaining unconnected areas are completely isolated from each other
+  // In that case, we just re-generate the map
+  const connectedBlocks = connectDisconnectedRegions(blocks)
+  if (!connectedBlocks) {
+    return null
+  }
+
+  blocks = connectedBlocks
+  return duplicateMapHalf(blocks)
 }
 
 // Pac Man maps are symmetrical, so we can duplicate the first half of the map
@@ -192,7 +207,7 @@ function cleanUpOrphans(blocks: BlockMap): BlockMap {
   return blocks
 }
 
-function connectDisconnectedRegions(blocks: BlockMap): BlockMap {
+function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
   let totalEmptyBlocks = blocks
     .flat()
     .filter((b) => b && b.type === 'empty').length
@@ -200,16 +215,22 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap {
   let visited = getInitialConnection(blocks)
   let visitedLength = visited.flat().filter((v) => v).length
   while (visitedLength < totalEmptyBlocks) {
+    const attemptedConnections: Position[] = []
     let breakLoop = false
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width / 2; x++) {
         if (blocks[y][x].type === 'empty' && !visited[y][x]) {
-          blocks[y][x].connected = false
+          if (attemptedConnections.some((pos) => pos.x === x && pos.y === y)) {
+            continue
+          }
+
+          attemptedConnections.push({ x, y })
           const { blocks: newBlocks, foundConnection } = tryConnectToNeighbors(
             blocks,
             x,
             y,
           )
+
           if (foundConnection) {
             breakLoop = true
             blocks = newBlocks
@@ -227,9 +248,10 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap {
     totalEmptyBlocks = blocks
       .flat()
       .filter((b) => b && b.type === 'empty').length
-    console.log(
-      `Post-connection visited empty blocks: ${visitedLength} out of ${totalEmptyBlocks}`,
-    )
+
+    if (totalEmptyBlocks - visitedLength === attemptedConnections.length) {
+      return null
+    }
   }
 
   return blocks
@@ -270,10 +292,7 @@ function getInitialConnection(blocks: BlockMap) {
 
     neighbors.forEach((neighbor) => {
       if (
-        neighbor.x >= 0 &&
-        neighbor.x < width / 2 &&
-        neighbor.y >= 0 &&
-        neighbor.y < height &&
+        blocks[neighbor.y]?.[neighbor.x] &&
         blocks[neighbor.y][neighbor.x].type === 'empty' &&
         !visited[neighbor.y][neighbor.x]
       ) {
@@ -296,7 +315,7 @@ function tryConnectToNeighbors(
     const positions: Position[] = []
     let x = blockX + dx
     let y = blockY + dy
-    while (x > 1 && x < width / 2 && y > 1 && y < height - 1) {
+    while (x > 0 && x < width / 2 && y > 0 && y < height) {
       positions.push({ x, y })
       if (blocks[y][x].type === 'empty' && blocks[y][x].connected) {
         return positions
@@ -309,7 +328,6 @@ function tryConnectToNeighbors(
     return null
   }
 
-  console.log(`Trying to connect block at (${blockX}, ${blockY})`)
   const directions = [
     { dx: -1, dy: 0 }, // left
     { dx: 1, dy: 0 }, // right
@@ -320,9 +338,6 @@ function tryConnectToNeighbors(
   for (const { dx, dy } of directions) {
     const positions = searchDirectionForEmpty(dx, dy)
     if (positions) {
-      console.log(
-        `Found empty path in direction (${dx}, ${dy}) for block at (${blockX}, ${blockY})`,
-      )
       positions.forEach((pos) => {
         blocks[pos.y][pos.x].type = 'empty'
       })

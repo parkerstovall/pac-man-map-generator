@@ -13,7 +13,7 @@ function App() {
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <button
           onClick={() => {
-            console.clear()
+            //console.clear()
             setMap(generateMap())
           }}
         >
