@@ -1,8 +1,16 @@
-export type Block = {
-  id: string
-  type: 'wall' | 'food' | 'powerPellet' | 'empty'
-  position: {
-    x: number
-    y: number
-  }
+export type BlockType = 'wall' | 'empty' | 'ghost-house' | 'teleporter'
+
+export type Position = {
+  x: number
+  y: number
 }
+
+export type WallShape = 'L' | 'T' | '+' | 'rectangle' | 'border'
+
+export type Block = {
+  type: BlockType
+  position: Position
+  connected?: boolean
+}
+
+export type BlockMap = Block[][]

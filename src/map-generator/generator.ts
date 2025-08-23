@@ -1,40 +1,335 @@
-import type { Block } from './types'
+/***
+ *  PacManMapGenerator Class
+ *  Generates a random Pac-Man map
+ *
+ *
+ * - General rules:
+ * - The map is made up of blocks, which can be walls, empty spaces, ghost houses, or teleporters
+ * - The map is 28 blocks wide and 31 blocks tall
+ * - The map is symmetrical
+ *
+ * - Generation rules:
+ * 1. The outer border, with the exception of any tunnels, is always walls
+ * 2. There are at either 1 or 2 tunnels
+ * 3. The inner four corners of the map are always paths
+ * 4. The center is the ghost house, and the area around it is always paths
+ * 5. All walls (excepting the outer border) must be at least 2 blocks thick
+ * 6. Walls can be shaped like "L", "T", or "+", and the occasional rectangle
+ * 7. There must be a path from any empty space to any other empty space
+ * 8. All path squares are connected to at least 2 other path squares (no dead ends)
+ * 9. Paths are only 1 block wide
+ * 10. All intersections of paths must be at least 2 blocks apart
+ * 11. Walls can be shaped like "L", "T", or "+", and the occasional rectangle
+ */
 
-export class PacManMapGenerator {
-  private readonly width: number = 28
-  private readonly height: number = 31
-  private readonly blocks: Block[]
+//import { generateNextBlock } from './block-generators'
+import { height, width } from './constants'
+import { PacManMapGeneratorForeman } from './generator-foreman'
+import { mapGeneratorOptionsSchema, type MapGeneratorOptions } from './options'
+import { getRandomInt } from './shared'
+import type { Block, BlockMap, Position } from './types'
 
-  constructor() {
-    this.blocks = []
+export function generateMap(
+  opts: MapGeneratorOptions = {
+    width: 28,
+    height: 31,
+    maxTeleporterCount: 2,
+  },
+) {
+  mapGeneratorOptionsSchema.parse(opts)
+  let blocks: BlockMap = []
+  //const maxTeleporterCount = Math.random() < 0.5 ? 1 : 2
+  const halfWidth = Math.floor(width / 2)
+
+  // At first, everything is a wall
+  for (let y = 0; y < height; y++) {
+    blocks.push([])
+    const row = blocks[y]
+    for (let x = 0; x < halfWidth; x++) {
+      if (y >= 12 && y <= 16 && x >= 10 && x <= 13) {
+        row.push({
+          type: 'ghost-house',
+          position: { x, y },
+        })
+      } else if (y >= 11 && y <= 17 && x >= 9 && x <= 14) {
+        row.push({
+          type: 'empty',
+          position: { x, y },
+        })
+      } else {
+        row.push({
+          type: 'wall',
+          position: { x, y },
+        })
+      }
+    }
   }
 
-  generateMap(): Block[] {
-    // temporarily generate a simple grid of empty blocks
+  // Create a list of 6 - 10 foremen to manage the builders
+  const foremen: PacManMapGeneratorForeman[] = []
+  const numForemen = getRandomInt(6, 10)
 
-    // clear previous blocks
-    this.blocks.splice(0, this.blocks.length)
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        const randomType = Math.random()
-        let type: 'wall' | 'food' | 'powerPellet' | 'empty' = 'empty'
-        if (randomType < 0.1) {
-          type = 'wall'
-        } else if (randomType < 0.3) {
-          type = 'food'
-        } else if (randomType < 0.4) {
-          type = 'powerPellet'
-        }
-        const block: Block = {
-          id: `${x}-${y}`,
-          type,
-          position: { x, y },
-        }
+  for (let i = 0; i < numForemen; i++) {
+    const position = {
+      x: getRandomInt(2, halfWidth - 2, true),
+      y: getRandomInt(2, height - 2, true),
+    }
 
-        this.blocks.push(block)
+    while (blocks[position.y][position.x].type !== 'wall') {
+      position.x = getRandomInt(2, halfWidth - 2, true)
+      position.y = getRandomInt(2, height - 2, true)
+    }
+
+    blocks[position.y][position.x] = {
+      type: 'empty',
+      position: { x: position.x, y: position.y },
+    }
+
+    foremen.push(
+      new PacManMapGeneratorForeman({
+        x: position.x,
+        y: position.y,
+        width: width / 2,
+        height,
+      }),
+    )
+  }
+
+  while (foremen.length > 0) {
+    foremen.forEach((foreman, index) => {
+      const newPositions = foreman.generatePaths(blocks)
+      newPositions.forEach((pos) => {
+        blocks[pos.y][pos.x] = {
+          type: 'empty',
+          position: { x: pos.x, y: pos.y },
+        }
+      })
+
+      if (foreman.jobsDone) {
+        foremen.splice(index, 1)
+      }
+    })
+  }
+
+  blocks = cleanMiddleAisle(blocks)
+  blocks = cleanUpOrphans(blocks)
+  blocks = connectDisconnectedRegions(blocks)
+  blocks = duplicateMapHalf(blocks)
+
+  return blocks
+}
+
+// Pac Man maps are symmetrical, so we can duplicate the first half of the map
+function duplicateMapHalf(blocks: BlockMap) {
+  for (let y = 0; y < height; y++) {
+    const row = blocks[y]
+    const mirroredRow = []
+    for (let x = 0; x < width / 2; x++) {
+      const mirroredBlock = generateBlockMirror(blocks, x, y)
+      mirroredRow.push(mirroredBlock)
+    }
+
+    mirroredRow.reverse()
+    row.push(...mirroredRow)
+  }
+
+  return blocks
+}
+
+function generateBlockMirror(blocks: BlockMap, x: number, y: number): Block {
+  const mirroredX = width - 1 - x
+  return {
+    type: blocks[y][x].type,
+    position: { x: mirroredX, y },
+  }
+}
+
+function cleanMiddleAisle(blocks: BlockMap): BlockMap {
+  const aisleX = 13
+  for (let y = 0; y < height; y++) {
+    const block = blocks[y][aisleX]
+    if (block.type === 'empty') {
+      const leftBlock = blocks[y][aisleX - 1]
+      if (leftBlock.type === 'empty') {
+        continue
+      }
+
+      block.type = 'wall'
+    }
+  }
+  return blocks
+}
+
+function cleanUpOrphans(blocks: BlockMap): BlockMap {
+  let hasOrphans = false
+  const maxWidth = width / 2
+  do {
+    hasOrphans = false
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < maxWidth; x++) {
+        const block = blocks[y][x]
+        if (block.type === 'empty') {
+          const neighbors = [
+            blocks[y - 1]?.[x],
+            blocks[y + 1]?.[x],
+            blocks[y][x - 1],
+            blocks[y][x + 1],
+          ].filter((b) => b && b.type === 'empty')
+
+          if (x === maxWidth - 1) {
+            if (neighbors.length === 0) {
+              block.type = 'wall'
+              hasOrphans = true
+            }
+          } else if (neighbors.length <= 1) {
+            block.type = 'wall'
+            hasOrphans = true
+          }
+        }
+      }
+    }
+  } while (hasOrphans)
+  return blocks
+}
+
+function connectDisconnectedRegions(blocks: BlockMap): BlockMap {
+  let totalEmptyBlocks = blocks
+    .flat()
+    .filter((b) => b && b.type === 'empty').length
+
+  let visited = getInitialConnection(blocks)
+  let visitedLength = visited.flat().filter((v) => v).length
+  while (visitedLength < totalEmptyBlocks) {
+    let breakLoop = false
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width / 2; x++) {
+        if (blocks[y][x].type === 'empty' && !visited[y][x]) {
+          blocks[y][x].connected = false
+          const { blocks: newBlocks, foundConnection } = tryConnectToNeighbors(
+            blocks,
+            x,
+            y,
+          )
+          if (foundConnection) {
+            breakLoop = true
+            blocks = newBlocks
+            break
+          }
+        }
+      }
+      if (breakLoop) {
+        break
       }
     }
 
-    return this.blocks
+    visited = getInitialConnection(blocks)
+    visitedLength = visited.flat().filter((v) => v).length
+    totalEmptyBlocks = blocks
+      .flat()
+      .filter((b) => b && b.type === 'empty').length
+    console.log(
+      `Post-connection visited empty blocks: ${visitedLength} out of ${totalEmptyBlocks}`,
+    )
   }
+
+  return blocks
+}
+
+function getInitialConnection(blocks: BlockMap) {
+  const visited: boolean[][] = Array.from({ length: height }, () =>
+    Array(width / 2).fill(false),
+  )
+  let starting: Position | null = null
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width / 2; x++) {
+      if (blocks[y][x].type === 'empty') {
+        starting = { x, y }
+        break
+      }
+    }
+    if (starting) break
+  }
+
+  const queue: Position[] = []
+  if (starting) {
+    queue.push(starting)
+    visited[starting.y][starting.x] = true
+    blocks[starting.y][starting.x].connected = true
+  }
+
+  while (queue.length > 0) {
+    const current = queue.shift()
+    if (!current) continue
+
+    const neighbors = [
+      { x: current.x - 1, y: current.y },
+      { x: current.x + 1, y: current.y },
+      { x: current.x, y: current.y - 1 },
+      { x: current.x, y: current.y + 1 },
+    ]
+
+    neighbors.forEach((neighbor) => {
+      if (
+        neighbor.x >= 0 &&
+        neighbor.x < width / 2 &&
+        neighbor.y >= 0 &&
+        neighbor.y < height &&
+        blocks[neighbor.y][neighbor.x].type === 'empty' &&
+        !visited[neighbor.y][neighbor.x]
+      ) {
+        visited[neighbor.y][neighbor.x] = true
+        blocks[neighbor.y][neighbor.x].connected = true
+        queue.push(neighbor)
+      }
+    })
+  }
+
+  return visited
+}
+
+function tryConnectToNeighbors(
+  blocks: BlockMap,
+  blockX: number,
+  blockY: number,
+) {
+  const searchDirectionForEmpty = (dx: number, dy: number) => {
+    const positions: Position[] = []
+    let x = blockX + dx
+    let y = blockY + dy
+    while (x > 1 && x < width / 2 && y > 1 && y < height - 1) {
+      positions.push({ x, y })
+      if (blocks[y][x].type === 'empty' && blocks[y][x].connected) {
+        return positions
+      }
+
+      x += dx
+      y += dy
+    }
+
+    return null
+  }
+
+  console.log(`Trying to connect block at (${blockX}, ${blockY})`)
+  const directions = [
+    { dx: -1, dy: 0 }, // left
+    { dx: 1, dy: 0 }, // right
+    { dx: 0, dy: -1 }, // up
+    { dx: 0, dy: 1 }, // down
+  ]
+
+  for (const { dx, dy } of directions) {
+    const positions = searchDirectionForEmpty(dx, dy)
+    if (positions) {
+      console.log(
+        `Found empty path in direction (${dx}, ${dy}) for block at (${blockX}, ${blockY})`,
+      )
+      positions.forEach((pos) => {
+        blocks[pos.y][pos.x].type = 'empty'
+      })
+
+      return { blocks, foundConnection: true }
+    }
+  }
+
+  return { blocks, foundConnection: false }
 }

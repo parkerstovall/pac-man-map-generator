@@ -9,8 +9,9 @@
   display: grid;
   grid-template-columns: repeat(28, 20px);
   grid-template-rows: repeat(31, 20px);
-  gap: 2px;
   margin: 0 auto;
+  gap: 1px;
+  background-color: white;
 }
 
 .block {
@@ -18,22 +19,10 @@
   height: 20px;
   background-color: black;
   position: relative;
+  box-sizing: border-box;
 }
 
-.block.food::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: block;
-  width: 50%;
-  height: 50%;
-  border-radius: 50%;
-  background-color: #f00;
-}
-
-.block.powerPellet::after {
+.block.empty::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -46,15 +35,6 @@
   background-color: #FFF;
 }
 
-.block.wall::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: block;
-  width: 90%;
-  height: 90%;
-  border-radius: 12px;
-  background-color: brown;
+.block.wall, .block.ghost-house {
+  border: 1px solid white;
 }
