@@ -112,8 +112,26 @@ function App() {
               }
             }
 
-            if (block.connected === false) {
-              style.backgroundColor = 'blue'
+            if (block.type === 'ghost-house') {
+              style.borderRadius = '0'
+              if (block.position.y === 12) {
+                style.borderTop = '1px solid white'
+              }
+              if (block.position.y === 16) {
+                style.borderBottom = '1px solid white'
+              }
+              if (block.position.x === 10) {
+                style.borderLeft = '1px solid white'
+              }
+              if (block.position.x === 17) {
+                style.borderRight = '1px solid white'
+              }
+              if (
+                (block.position.x === 13 || block.position.x === 14) &&
+                block.position.y === 12
+              ) {
+                style.borderTop = 'none'
+              }
             }
 
             return (
