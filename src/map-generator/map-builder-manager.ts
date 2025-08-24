@@ -1,20 +1,22 @@
-import { PacManMapGeneratorBuilder } from './generator-worker'
+import { MapBuilder } from './map-builder'
+import type { MapGeneratorOptions } from './options'
 import { getRandomDirection, getRandomInt } from './shared'
 import type { BlockMap, Position } from './types'
 
-export type ForemanArgs = {
+export type ManagerArgs = {
   x: number
   y: number
   width: number
   height: number
+  opts: MapGeneratorOptions
 }
 
-// The foreman contains between 2 and 4 builders that each build a path
-export class PacManMapGeneratorForeman {
+// The manager contains between 2 and 4 builders that each build a path
+export class MapBuilderManager {
   public jobsDone: boolean = false
-  private builders: PacManMapGeneratorBuilder[]
+  private builders: MapBuilder[]
 
-  constructor(args: ForemanArgs) {
+  constructor(args: ManagerArgs) {
     const numBuilders = getRandomInt(2, 4) // 2 to 4 builders
     this.builders = []
     const ignoreDir: Position[] = []
@@ -40,13 +42,14 @@ export class PacManMapGeneratorForeman {
 
     for (let i = 0; i < numBuilders; i++) {
       this.builders.push(
-        new PacManMapGeneratorBuilder({
+        new MapBuilder({
           x: args.x,
           y: args.y,
           width: args.width,
           height: args.height,
           directionX: x,
           directionY: y,
+          opts: args.opts,
         }),
       )
 

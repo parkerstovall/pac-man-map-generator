@@ -1,3 +1,4 @@
+import type { MapGeneratorOptions } from './options'
 import { getRandomDirection, getRandomInt } from './shared'
 import type { BlockMap, Position } from './types'
 
@@ -8,9 +9,10 @@ export type BuilderArgs = {
   height: number
   directionX: number
   directionY: number
+  opts: MapGeneratorOptions
 }
 
-export class PacManMapGeneratorBuilder {
+export class MapBuilder {
   jobsDone: boolean = false
   private distanceBeforeTurn: number
   private position: Position
@@ -27,7 +29,11 @@ export class PacManMapGeneratorBuilder {
     this.MAX_HEIGHT = args.height - 2
     this.position = { x: args.x, y: args.y }
     this.direction = { x: args.directionX, y: args.directionY }
-    this.distanceBeforeTurn = getRandomInt(4, 12, false)
+    this.distanceBeforeTurn = getRandomInt(
+      args.opts.mapMaker.builder.minDistanceBeforeTurn,
+      args.opts.mapMaker.builder.maxDistanceBeforeTurn,
+      false,
+    )
   }
 
   public generatePath(blocks: BlockMap): Position {

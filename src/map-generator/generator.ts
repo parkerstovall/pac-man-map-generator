@@ -24,21 +24,43 @@
 
 //import { generateNextBlock } from './block-generators'
 import { height, width } from './constants'
-import { PacManMapGeneratorForeman } from './generator-foreman'
+import { MapBuilderManager } from './map-builder-manager'
 import { mapGeneratorOptionsSchema, type MapGeneratorOptions } from './options'
 import { getRandomInt } from './shared'
-import type { Block, BlockMap, Position } from './types'
+import type { Block, BlockMap, MapStats, Position } from './types'
 
 export function generateMap(
   opts: MapGeneratorOptions = {
-    width: 28,
-    height: 31,
-    maxTeleporterCount: 2,
+    map: {
+      width: 28,
+      height: 31,
+      teleporter: {
+        min: 1,
+        max: 4,
+      },
+      pathCount: {
+        min: 250,
+      },
+    },
+    mapMaker: {
+      manager: {
+        min: 6,
+        max: 10,
+      },
+      builder: {
+        minDistanceBeforeTurn: 4,
+        maxDistanceBeforeTurn: 12,
+      },
+    },
+    debug: true,
   },
 ) {
   mapGeneratorOptionsSchema.parse(opts)
+  if (opts.debug) {
+    console.log('Generating map with options:', opts)
+  }
+
   const blocks: BlockMap = []
-  //const maxTeleporterCount = Math.random() < 0.5 ? 1 : 2
   const halfWidth = Math.floor(width / 2)
 
   // At first, everything is a wall
@@ -66,8 +88,14 @@ export function generateMap(
   }
 
   // Create a list of 6 - 10 foremen to manage the builders
-  const foremen: PacManMapGeneratorForeman[] = []
-  const numForemen = getRandomInt(6, 10)
+  const foremen: MapBuilderManager[] = []
+  const numForemen = getRandomInt(
+    opts.mapMaker.manager.min,
+    opts.mapMaker.manager.max,
+  )
+  if (opts.debug) {
+    console.log(`Creating ${numForemen} foremen...`)
+  }
 
   for (let i = 0; i < numForemen; i++) {
     const position = {
@@ -80,24 +108,20 @@ export function generateMap(
       position.y = getRandomInt(2, height - 2, true)
     }
 
-    blocks[position.y][position.x] = {
-      type: 'empty',
-      position: { x: position.x, y: position.y },
-    }
-
     foremen.push(
-      new PacManMapGeneratorForeman({
+      new MapBuilderManager({
         x: position.x,
         y: position.y,
         width: width / 2,
         height,
+        opts,
       }),
     )
   }
 
   while (foremen.length > 0) {
-    foremen.forEach((foreman, index) => {
-      const newPositions = foreman.generatePaths(blocks)
+    foremen.forEach((manager, index) => {
+      const newPositions = manager.generatePaths(blocks)
       newPositions.forEach((pos) => {
         blocks[pos.y][pos.x] = {
           type: 'empty',
@@ -105,29 +129,34 @@ export function generateMap(
         }
       })
 
-      if (foreman.jobsDone) {
+      if (manager.jobsDone) {
         foremen.splice(index, 1)
       }
     })
   }
 
-  const cleanMap = cleanUpMap(blocks)
-  if (!cleanMap) {
+  const cleanMap = cleanUpMap(blocks, opts)
+
+  if (!validateMap(cleanMap, opts)) {
+    if (opts.debug) {
+      console.log('Map did not pass validation, regenerating...')
+    }
     return generateMap(opts)
   }
 
   return cleanMap
 }
 
-function cleanUpMap(blocks: BlockMap): BlockMap | null {
+function cleanUpMap(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   blocks = cleanMiddleAisle(blocks)
   blocks = cleanUpOrphans(blocks)
+  blocks = addTeleporters(blocks, opts)
 
   // There is a VERY rare chance that the remaining unconnected areas are completely isolated from each other
   // In that case, we just re-generate the map
   const connectedBlocks = connectDisconnectedRegions(blocks)
   if (!connectedBlocks) {
-    return null
+    return generateMap(opts)
   }
 
   blocks = connectedBlocks
@@ -189,7 +218,7 @@ function cleanUpOrphans(blocks: BlockMap): BlockMap {
             blocks[y + 1]?.[x],
             blocks[y][x - 1],
             blocks[y][x + 1],
-          ].filter((b) => b && b.type === 'empty')
+          ].filter((b) => b?.type === 'empty')
 
           if (x === maxWidth - 1) {
             if (neighbors.length === 0) {
@@ -207,10 +236,25 @@ function cleanUpOrphans(blocks: BlockMap): BlockMap {
   return blocks
 }
 
+function addTeleporters(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
+  const count = getRandomInt(opts.map.teleporter.min, opts.map.teleporter.max)
+
+  // Add teleporters
+  for (let i = 0; i < count; i++) {
+    const y = getRandomInt(1, height - 2, true)
+    blocks[y][0] = {
+      type: 'teleporter',
+      position: { x: 0, y },
+    }
+  }
+
+  return blocks
+}
+
 function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
   let totalEmptyBlocks = blocks
     .flat()
-    .filter((b) => b && b.type === 'empty').length
+    .filter((b) => b?.type === 'teleporter' || b?.type === 'empty').length
 
   let visited = getInitialConnection(blocks)
   let visitedLength = visited.flat().filter((v) => v).length
@@ -219,7 +263,11 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
     let breakLoop = false
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width / 2; x++) {
-        if (blocks[y][x].type === 'empty' && !visited[y][x]) {
+        if (
+          (blocks[y][x].type === 'empty' ||
+            blocks[y][x].type === 'teleporter') &&
+          !visited[y][x]
+        ) {
           if (attemptedConnections.some((pos) => pos.x === x && pos.y === y)) {
             continue
           }
@@ -247,7 +295,7 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
     visitedLength = visited.flat().filter((v) => v).length
     totalEmptyBlocks = blocks
       .flat()
-      .filter((b) => b && b.type === 'empty').length
+      .filter((b) => b?.type === 'teleporter' || b?.type === 'empty').length
 
     if (totalEmptyBlocks - visitedLength === attemptedConnections.length) {
       return null
@@ -293,7 +341,7 @@ function getInitialConnection(blocks: BlockMap) {
     neighbors.forEach((neighbor) => {
       if (
         blocks[neighbor.y]?.[neighbor.x] &&
-        blocks[neighbor.y][neighbor.x].type === 'empty' &&
+        ['empty', 'teleporter'].includes(blocks[neighbor.y][neighbor.x].type) &&
         !visited[neighbor.y][neighbor.x]
       ) {
         visited[neighbor.y][neighbor.x] = true
@@ -317,7 +365,10 @@ function tryConnectToNeighbors(
     let y = blockY + dy
     while (x > 0 && x < width / 2 && y > 0 && y < height) {
       positions.push({ x, y })
-      if (blocks[y][x].type === 'empty' && blocks[y][x].connected) {
+      if (
+        ['empty', 'teleporter'].includes(blocks[y][x].type) &&
+        blocks[y][x].connected
+      ) {
         return positions
       }
 
@@ -347,4 +398,45 @@ function tryConnectToNeighbors(
   }
 
   return { blocks, foundConnection: false }
+}
+
+function validateMap(blocks: BlockMap, opts: MapGeneratorOptions): boolean {
+  const stats = getMapStats(blocks)
+  if (opts.debug) {
+    console.log(`Map Stats:`, stats)
+  }
+
+  if (
+    opts.map.pathCount?.min &&
+    stats.totalPathBlocks < opts.map.pathCount.min
+  ) {
+    return false
+  }
+
+  if (
+    opts.map.pathCount?.max &&
+    stats.totalPathBlocks > opts.map.pathCount.max
+  ) {
+    return false
+  }
+
+  return true
+}
+
+function getMapStats(blocks: BlockMap): MapStats {
+  let totalPathBlocks = 0
+  let totalWallBlocks = 0
+  let totalTeleporterBlocks = 0
+
+  blocks.flat().forEach((block) => {
+    if (block.type === 'empty') {
+      totalPathBlocks++
+    } else if (block.type === 'wall') {
+      totalWallBlocks++
+    } else if (block.type === 'teleporter') {
+      totalTeleporterBlocks++
+    }
+  })
+
+  return { totalPathBlocks, totalWallBlocks, totalTeleporterBlocks }
 }
