@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "zod": "^4.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
@@ -28,8 +29,7 @@
     "globals": "^16.3.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.2",
-    "zod": "^4.1.1"
+    "vite": "^7.1.2"
   },
   "prettier": {
     "singleQuote": true,
