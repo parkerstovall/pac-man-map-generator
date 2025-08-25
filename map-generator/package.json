@@ -1,7 +1,7 @@
 {
   "name": "pac-man-map-generator",
   "version": "1.0.1",
-  "main": "map-generator.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "lint": "eslint ./src --fix",

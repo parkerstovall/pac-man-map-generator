@@ -1,7 +1,7 @@
 // import { useEffect, useState } from 'react'
-// import { generateMap } from '../../map-generator/src/map-generator'
-// import type { MapGeneratorOptions } from '../../map-generator/src/options'
-// import type { Block, BlockMap } from '../../map-generator/src/types'
+// import type { MapGeneratorOptions } from 'pac-man-map-generator/dist/options'
+// import { generateMap } from 'pac-man-map-generator/dist/index'
+// import type { Block, BlockMap } from 'pac-man-map-generator/dist/shared'
 
 // export default function Map({
 //   mapOptions,
