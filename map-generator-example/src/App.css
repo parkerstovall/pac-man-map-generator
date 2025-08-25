@@ -7,8 +7,6 @@
 
 .map {
   display: grid;
-  grid-template-columns: repeat(28, 20px);
-  grid-template-rows: repeat(31, 20px);
   margin: 0 auto;
   background-color: black;
 }
@@ -36,4 +34,8 @@
 
 .block.wall {
   border: 1px solid white;
+}
+
+.block.ghost-house {
+  border: 1px solid blue;
 }

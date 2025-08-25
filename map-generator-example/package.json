@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint ./src --fix",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -28,8 +28,7 @@
     "globals": "^16.3.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.2",
-    "zod": "^4.0.17"
+    "vite": "^7.1.2"
   },
   "prettier": {
     "singleQuote": true,
