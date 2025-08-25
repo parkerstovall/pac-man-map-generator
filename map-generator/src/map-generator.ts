@@ -1,29 +1,3 @@
-/***
- *  PacManMapGenerator Class
- *  Generates a random Pac-Man map
- *
- *
- * - General rules:
- * - The map is made up of blocks, which can be walls, empty spaces, ghost houses, or teleporters
- * - The map is 28 blocks wide and 31 blocks tall
- * - The map is symmetrical
- *
- * - Generation rules:
- * 1. The outer border, with the exception of any tunnels, is always walls
- * 2. There are at either 1 or 2 tunnels
- * 3. The inner four corners of the map are always paths
- * 4. The center is the ghost house, and the area around it is always paths
- * 5. All walls (excepting the outer border) must be at least 2 blocks thick
- * 6. Walls can be shaped like "L", "T", or "+", and the occasional rectangle
- * 7. There must be a path from any empty space to any other empty space
- * 8. All path squares are connected to at least 2 other path squares (no dead ends)
- * 9. Paths are only 1 block wide
- * 10. All intersections of paths must be at least 2 blocks apart
- * 11. Walls can be shaped like "L", "T", or "+", and the occasional rectangle
- */
-
-//import { generateNextBlock } from './block-generators'
-import { halfWidth, height, width } from './constants'
 import { MapBuilderManager } from './map-builder-manager'
 import { mapGeneratorOptionsSchema, type MapGeneratorOptions } from './options'
 import { getRandomInt } from './shared'
@@ -32,6 +6,10 @@ import type { Block, BlockMap, MapStats, Position } from './types'
 export function generateMap(
   opts: MapGeneratorOptions = {
     map: {
+      bounds: {
+        width: 28,
+        height: 31,
+      },
       teleporter: {
         min: 1,
         max: 4,
@@ -58,83 +36,11 @@ export function generateMap(
     console.log('Generating map with options:', opts)
   }
 
-  let blocks: BlockMap = []
+  let blocks: BlockMap = buildMapSkeleton(opts)
+  blocks = cleanUpMap(blocks, opts)
 
   while (!validateMap(blocks, opts)) {
-    blocks = []
-
-    // At first, everything is a wall
-    for (let y = 0; y < height; y++) {
-      blocks.push([])
-      const row = blocks[y]
-      for (let x = 0; x < halfWidth; x++) {
-        if (y >= 12 && y <= 16 && x >= 10 && x <= 13) {
-          row.push({
-            type: 'ghost-house',
-            position: { x, y },
-          })
-        } else if (y >= 11 && y <= 17 && x >= 9 && x <= 14) {
-          row.push({
-            type: 'empty',
-            position: { x, y },
-          })
-        } else {
-          row.push({
-            type: 'wall',
-            position: { x, y },
-          })
-        }
-      }
-    }
-
-    // Create a list of 6 - 10 foremen to manage the builders
-    const foremen: MapBuilderManager[] = []
-    const numForemen = getRandomInt(
-      opts.mapMaker.manager.min,
-      opts.mapMaker.manager.max,
-    )
-    if (opts.debug) {
-      console.log(`Creating ${numForemen} foremen...`)
-    }
-
-    for (let i = 0; i < numForemen; i++) {
-      const position = {
-        x: getRandomInt(2, halfWidth - 2, true),
-        y: getRandomInt(2, height - 2, true),
-      }
-
-      while (blocks[position.y][position.x].type !== 'wall') {
-        position.x = getRandomInt(2, halfWidth - 2, true)
-        position.y = getRandomInt(2, height - 2, true)
-      }
-
-      foremen.push(
-        new MapBuilderManager({
-          x: position.x,
-          y: position.y,
-          width: halfWidth,
-          height,
-          opts,
-        }),
-      )
-    }
-
-    while (foremen.length > 0) {
-      foremen.forEach((manager, index) => {
-        const newPositions = manager.generatePaths(blocks)
-        newPositions.forEach((pos) => {
-          blocks[pos.y][pos.x] = {
-            type: 'empty',
-            position: { x: pos.x, y: pos.y },
-          }
-        })
-
-        if (manager.jobsDone) {
-          foremen.splice(index, 1)
-        }
-      })
-    }
-
+    blocks = buildMapSkeleton(opts)
     blocks = cleanUpMap(blocks, opts)
 
     if (opts.debug) {
@@ -146,29 +52,140 @@ export function generateMap(
   return blocks
 }
 
+function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
+  const blocks: BlockMap = []
+
+  const { width, height } = opts.map.bounds
+  const halfWidth = Math.floor(width / 2)
+
+  const ghostHouseArea = {
+    x: width / 2 - 4,
+    y: height / 2 - 2,
+    width: 8,
+    height: 5,
+  }
+
+  const ghostHouseOutline = {
+    x: ghostHouseArea.x - 1,
+    y: ghostHouseArea.y - 1,
+    width: ghostHouseArea.width + 2,
+    height: ghostHouseArea.height + 2,
+  }
+
+  // At first, everything is a wall
+  for (let y = 0; y < height; y++) {
+    blocks.push([])
+    const row = blocks[y]
+    for (let x = 0; x < halfWidth; x++) {
+      if (
+        y >= ghostHouseArea.y &&
+        y < ghostHouseArea.y + ghostHouseArea.height &&
+        x >= ghostHouseArea.x &&
+        x < ghostHouseArea.x + ghostHouseArea.width
+      ) {
+        row.push({
+          type: 'ghost-house',
+          position: { x, y },
+        })
+      } else if (
+        y >= ghostHouseOutline.y &&
+        y < ghostHouseOutline.y + ghostHouseOutline.height &&
+        x >= ghostHouseOutline.x &&
+        x < ghostHouseOutline.x + ghostHouseOutline.width
+      ) {
+        row.push({
+          type: 'empty',
+          position: { x, y },
+        })
+      } else {
+        row.push({
+          type: 'wall',
+          position: { x, y },
+        })
+      }
+    }
+  }
+
+  // Create a list of 6 - 10 foremen to manage the builders
+  const foremen: MapBuilderManager[] = []
+  const numForemen = getRandomInt(
+    opts.mapMaker.manager.min,
+    opts.mapMaker.manager.max,
+  )
+  if (opts.debug) {
+    console.log(`Creating ${numForemen} foremen...`)
+  }
+
+  for (let i = 0; i < numForemen; i++) {
+    const position = {
+      x: getRandomInt(2, halfWidth - 2, true),
+      y: getRandomInt(2, height - 2, true),
+    }
+
+    while (blocks[position.y][position.x].type !== 'wall') {
+      position.x = getRandomInt(2, halfWidth - 2, true)
+      position.y = getRandomInt(2, height - 2, true)
+    }
+
+    foremen.push(
+      new MapBuilderManager({
+        x: position.x,
+        y: position.y,
+        width: halfWidth,
+        height,
+        opts,
+      }),
+    )
+  }
+
+  while (foremen.length > 0) {
+    foremen.forEach((manager, index) => {
+      const newPositions = manager.generatePaths(blocks)
+      newPositions.forEach((pos) => {
+        blocks[pos.y][pos.x] = {
+          type: 'empty',
+          position: { x: pos.x, y: pos.y },
+        }
+      })
+
+      if (manager.jobsDone) {
+        foremen.splice(index, 1)
+      }
+    })
+  }
+
+  return blocks
+}
+
 function cleanUpMap(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
-  blocks = cleanMiddleAisle(blocks)
-  blocks = cleanUpOrphans(blocks)
+  blocks = cleanMiddleAisle(blocks, opts)
+  blocks = cleanUpOrphans(blocks, opts)
   blocks = addTeleporters(blocks, opts)
 
   // There is a VERY rare chance that the remaining unconnected areas are completely isolated from each other
   // In that case, we just re-generate the map
-  const connectedBlocks = connectDisconnectedRegions(blocks)
+  const connectedBlocks = connectDisconnectedRegions(blocks, opts)
   if (!connectedBlocks) {
     return []
   }
 
   blocks = connectedBlocks
-  return duplicateMapHalf(blocks)
+  return duplicateMapHalf(blocks, opts)
 }
 
 // Pac Man maps are symmetrical, so we can duplicate the first half of the map
-function duplicateMapHalf(blocks: BlockMap) {
+function duplicateMapHalf(
+  blocks: BlockMap,
+  opts: MapGeneratorOptions,
+): BlockMap {
+  const { width, height } = opts.map.bounds
+  const halfWidth = Math.floor(width / 2)
+
   for (let y = 0; y < height; y++) {
     const row = blocks[y]
     const mirroredRow = []
     for (let x = 0; x < halfWidth; x++) {
-      const mirroredBlock = generateBlockMirror(blocks, x, y)
+      const mirroredBlock = generateBlockMirror(blocks, x, y, opts)
       mirroredRow.push(mirroredBlock)
     }
 
@@ -179,7 +196,13 @@ function duplicateMapHalf(blocks: BlockMap) {
   return blocks
 }
 
-function generateBlockMirror(blocks: BlockMap, x: number, y: number): Block {
+function generateBlockMirror(
+  blocks: BlockMap,
+  x: number,
+  y: number,
+  opts: MapGeneratorOptions,
+): Block {
+  const { width } = opts.map.bounds
   const mirroredX = width - 1 - x
   return {
     type: blocks[y][x].type,
@@ -187,8 +210,12 @@ function generateBlockMirror(blocks: BlockMap, x: number, y: number): Block {
   }
 }
 
-function cleanMiddleAisle(blocks: BlockMap): BlockMap {
-  const aisleX = 13
+function cleanMiddleAisle(
+  blocks: BlockMap,
+  opts: MapGeneratorOptions,
+): BlockMap {
+  const { height, width } = opts.map.bounds
+  const aisleX = width / 2 - 1
   for (let y = 0; y < height; y++) {
     const block = blocks[y][aisleX]
     if (block.type === 'empty') {
@@ -203,7 +230,10 @@ function cleanMiddleAisle(blocks: BlockMap): BlockMap {
   return blocks
 }
 
-function cleanUpOrphans(blocks: BlockMap): BlockMap {
+function cleanUpOrphans(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
+  const { width, height } = opts.map.bounds
+  const halfWidth = Math.floor(width / 2)
+
   let hasOrphans = false
   do {
     hasOrphans = false
@@ -236,6 +266,8 @@ function cleanUpOrphans(blocks: BlockMap): BlockMap {
 
 function addTeleporters(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   const count = getRandomInt(opts.map.teleporter.min, opts.map.teleporter.max)
+  const { height } = opts.map.bounds
+
   if (opts.debug) {
     console.log(`Adding ${count} teleporters...`)
   }
@@ -257,12 +289,17 @@ function addTeleporters(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   return blocks
 }
 
-function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
+function connectDisconnectedRegions(
+  blocks: BlockMap,
+  opts: MapGeneratorOptions,
+): BlockMap | null {
+  const { width, height } = opts.map.bounds
+  const halfWidth = Math.floor(width / 2)
   let totalEmptyBlocks = blocks
     .flat()
     .filter((b) => b?.type === 'teleporter' || b?.type === 'empty').length
 
-  let visited = getInitialConnection(blocks)
+  let visited = getInitialConnection(blocks, opts)
   let visitedLength = visited.flat().filter((v) => v).length
   while (visitedLength < totalEmptyBlocks) {
     const attemptedConnections: Position[] = []
@@ -283,6 +320,7 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
             blocks,
             x,
             y,
+            opts,
           )
 
           if (foundConnection) {
@@ -297,7 +335,7 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
       }
     }
 
-    visited = getInitialConnection(blocks)
+    visited = getInitialConnection(blocks, opts)
     visitedLength = visited.flat().filter((v) => v).length
     totalEmptyBlocks = blocks
       .flat()
@@ -311,7 +349,10 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
   return blocks
 }
 
-function getInitialConnection(blocks: BlockMap) {
+function getInitialConnection(blocks: BlockMap, opts: MapGeneratorOptions) {
+  const { height, width } = opts.map.bounds
+  const halfWidth = Math.floor(width / 2)
+
   const visited: boolean[][] = Array.from({ length: height }, () =>
     Array(halfWidth).fill(false),
   )
@@ -364,7 +405,11 @@ function tryConnectToNeighbors(
   blocks: BlockMap,
   blockX: number,
   blockY: number,
+  opts: MapGeneratorOptions,
 ) {
+  const { width, height } = opts.map.bounds
+  const halfWidth = Math.floor(width / 2)
+
   const searchDirectionForEmpty = (dx: number, dy: number) => {
     const positions: Position[] = []
     let x = blockX + dx
@@ -410,6 +455,10 @@ function validateMap(blocks: BlockMap, opts: MapGeneratorOptions): boolean {
   const stats = getMapStats(blocks)
   if (opts.debug) {
     console.log(`Map Stats:`, stats)
+  }
+
+  if (blocks.length === 0) {
+    return false
   }
 
   if (opts.map.path?.min && stats.totalPathBlocks < opts.map.path.min) {

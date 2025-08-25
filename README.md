@@ -26,6 +26,10 @@ The map generator takes in an optional configuration object. If it is omitted, s
 ```ts
 {
   map: { 
+    bounds: {
+      width: number,
+      height: number,
+    }
     path?: {
       min?: number;
       max?: number;
