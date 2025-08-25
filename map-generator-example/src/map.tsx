@@ -1,7 +1,7 @@
 // import { useEffect, useState } from 'react'
-// import { generateMap } from './map-generator/generator'
-// import type { MapGeneratorOptions } from './map-generator/options'
-// import type { Block, BlockMap } from './map-generator/types'
+// import type { MapGeneratorOptions } from 'pac-man-map-generator/dist/options'
+// import { generateMap } from 'pac-man-map-generator/dist/index'
+// import type { Block, BlockMap } from 'pac-man-map-generator/dist/shared'
 
 // export default function Map({
 //   mapOptions,
@@ -94,23 +94,32 @@
 
 //     if (block.type === 'ghost-house') {
 //       style.borderRadius = '0'
-//       if (block.position.y === 12) {
-//         style.borderTop = '1px solid white'
+//       if (map[block.position.y][block.position.x + 1]?.type === 'ghost-house') {
+//         style.borderRight = 'none'
 //       }
-//       if (block.position.y === 16) {
-//         style.borderBottom = '1px solid white'
+
+//       if (map[block.position.y][block.position.x - 1]?.type === 'ghost-house') {
+//         style.borderLeft = 'none'
 //       }
-//       if (block.position.x === 10) {
-//         style.borderLeft = '1px solid white'
-//       }
-//       if (block.position.x === 17) {
-//         style.borderRight = '1px solid white'
-//       }
+
 //       if (
-//         (block.position.x === 13 || block.position.x === 14) &&
-//         block.position.y === 12
+//         map[block.position.y - 1]?.[block.position.x]?.type === 'ghost-house'
 //       ) {
 //         style.borderTop = 'none'
+//       } else {
+//         const middleX = Math.floor(map[0].length / 2)
+//         const isMiddleDoor =
+//           block.position.x === middleX || block.position.x === middleX - 1
+
+//         if (isMiddleDoor) {
+//           style.borderTop = 'none'
+//         }
+//       }
+
+//       if (
+//         map[block.position.y + 1]?.[block.position.x]?.type === 'ghost-house'
+//       ) {
+//         style.borderBottom = 'none'
 //       }
 //     }
 

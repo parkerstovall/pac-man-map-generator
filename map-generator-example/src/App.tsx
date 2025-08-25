@@ -1,16 +1,20 @@
 // import { useState } from 'react'
 // import './App.css'
-// import type { MapGeneratorOptions } from './map-generator/options'
 // import Map from './map'
+// import type { MapGeneratorOptions } from '../../map-generator/src/options'
 
 // function App() {
 //   const [mapOptions, setMapOptions] = useState<MapGeneratorOptions>({
 //     map: {
+//       bounds: {
+//         width: 28,
+//         height: 31,
+//       },
 //       teleporter: {
 //         min: 1,
 //         max: 4,
 //       },
-//       pathCount: {
+//       path: {
 //         min: 300,
 //       },
 //     },
@@ -47,16 +51,28 @@
 //             gap: '5px',
 //           }}
 //         >
+//           <label>Height:</label>
+//           <input
+//             type="number"
+//             defaultValue={mapOptions.map.bounds.height}
+//             id="height-input"
+//           />
+//           <label>Width:</label>
+//           <input
+//             type="number"
+//             defaultValue={mapOptions.map.bounds.width}
+//             id="width-input"
+//           />
 //           <label>Min Paths:</label>
 //           <input
 //             type="number"
-//             defaultValue={mapOptions.map.pathCount?.min ?? ''}
+//             defaultValue={mapOptions.map.path?.min ?? ''}
 //             id="min-paths-input"
 //           />
 //           <label>Max Paths:</label>
 //           <input
 //             type="number"
-//             defaultValue={mapOptions.map.pathCount?.max ?? ''}
+//             defaultValue={mapOptions.map.path?.max ?? ''}
 //             id="max-paths-input"
 //           />
 //           <label>Max Teleporters:</label>
@@ -163,6 +179,14 @@
 //                   ) as HTMLInputElement
 //                 ).value,
 //               )
+//               const height = parseInt(
+//                 (document.getElementById('height-input') as HTMLInputElement)
+//                   .value,
+//               )
+//               const width = parseInt(
+//                 (document.getElementById('width-input') as HTMLInputElement)
+//                   .value,
+//               )
 //               const debug = (
 //                 document.getElementById('debug-input') as HTMLInputElement
 //               ).checked
@@ -171,7 +195,13 @@
 //                 ...mapOptions,
 //                 map: {
 //                   ...mapOptions.map,
-//                   pathCount: {
+//                   bounds: {
+//                     width: isNaN(width) ? mapOptions.map.bounds.width : width,
+//                     height: isNaN(height)
+//                       ? mapOptions.map.bounds.height
+//                       : height,
+//                   },
+//                   path: {
 //                     min: isNaN(minPaths) ? undefined : minPaths,
 //                     max: isNaN(maxPaths) ? undefined : maxPaths,
 //                   },
