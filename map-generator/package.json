@@ -1,0 +1,41 @@
+{
+  "name": "map-generator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint ./src --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-unused-imports": "^4.2.0",
+    "globals": "^16.3.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.39.1",
+    "zod": "^4.0.17"
+  },
+  "type": "module",
+  "keywords": ["pacman", "map", "generator", "game"],
+  "author": "parkerstovall",
+  "license": "MIT",
+  "description": "Generates a random pacman map",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bugs": {
+    "url": "https://github.com/parkerstovall/pac-man-map-generator/issues"
+  },
+  "homepage": "https://github.com/parkerstovall/pac-man-map-generator",
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all",
+    "tabWidth": 2,
+    "semi": false,
+    "printWidth": 80
+  }
+}

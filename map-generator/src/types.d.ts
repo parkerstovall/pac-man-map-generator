@@ -5,8 +5,6 @@ export type Position = {
   y: number
 }
 
-export type WallShape = 'L' | 'T' | '+' | 'rectangle' | 'border'
-
 export type Block = {
   type: BlockType
   position: Position

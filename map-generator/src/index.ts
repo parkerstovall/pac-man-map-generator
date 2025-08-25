@@ -36,7 +36,7 @@ export function generateMap(
         min: 1,
         max: 4,
       },
-      pathCount: {
+      path: {
         min: 300,
       },
     },
@@ -412,17 +412,11 @@ function validateMap(blocks: BlockMap, opts: MapGeneratorOptions): boolean {
     console.log(`Map Stats:`, stats)
   }
 
-  if (
-    opts.map.pathCount?.min &&
-    stats.totalPathBlocks < opts.map.pathCount.min
-  ) {
+  if (opts.map.path?.min && stats.totalPathBlocks < opts.map.path.min) {
     return false
   }
 
-  if (
-    opts.map.pathCount?.max &&
-    stats.totalPathBlocks > opts.map.pathCount.max
-  ) {
+  if (opts.map.path?.max && stats.totalPathBlocks > opts.map.path.max) {
     return false
   }
 
