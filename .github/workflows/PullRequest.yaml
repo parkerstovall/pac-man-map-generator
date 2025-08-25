@@ -1,0 +1,41 @@
+name: 'Verify Typescript'
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  Build_MapGenerator:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./map-generator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          cache: "npm"
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+          
+  Build_MapGeneratorExample:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./map-generator-example
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          cache: "npm"
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm run lint
+          npm run build

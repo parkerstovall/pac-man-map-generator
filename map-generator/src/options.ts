@@ -4,7 +4,7 @@ import { height, width } from './constants'
 export const mapGeneratorOptionsSchema = z
   .object({
     map: z.object({
-      pathCount: z
+      path: z
         .object({
           min: z.number().min(1).optional(),
           max: z.number().min(1).optional(),
@@ -29,8 +29,8 @@ export const mapGeneratorOptionsSchema = z
   })
   .refine(
     (obj) =>
-      !(obj.map.pathCount?.min && obj.map.pathCount?.max) ||
-      obj.map.pathCount.min < obj.map.pathCount.max,
+      !(obj.map.path?.min && obj.map.path?.max) ||
+      obj.map.path.min < obj.map.path.max,
     'Min path count must be less than or equal to max path count',
   )
   .refine(
@@ -44,15 +44,13 @@ export const mapGeneratorOptionsSchema = z
     'Min teleporter count must be at least 1 and less than or equal to max teleporter count',
   )
   .refine(
-    (obj) =>
-      !obj.map.pathCount?.max || obj.map.pathCount.max < (width * height) / 2,
+    (obj) => !obj.map.path?.max || obj.map.path.max < (width * height) / 2,
     {
       message: 'Max total path blocks must be less than half the total blocks',
     },
   )
   .refine(
-    (obj) =>
-      !obj.map.pathCount?.min || obj.map.pathCount.min < (width * height) / 2,
+    (obj) => !obj.map.path?.min || obj.map.path.min < (width * height) / 2,
     {
       message: 'Min total path blocks must be less than half the total blocks',
     },
