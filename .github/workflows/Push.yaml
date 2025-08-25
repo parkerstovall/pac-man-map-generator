@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           cache: "npm"
-          registry-url: "https://registry.npmjs.org"
+          cache-dependency-path: ./map-generator/package-lock.json
 
       - run: npm ci
       - run: npm run build

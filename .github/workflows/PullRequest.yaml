@@ -16,6 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           cache: "npm"
+          cache-dependency-path: ./map-generator/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -33,6 +34,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           cache: "npm"
+          cache-dependency-path: ./map-generator-example/package-lock.json
 
       - name: Install dependencies
         run: |
