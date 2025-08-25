@@ -1,10 +1,11 @@
 {
   "name": "map-generator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "lint": "eslint ./src --fix"
+    "lint": "eslint ./src --fix",
+    "patch": "npm version patch --no-git-tag-version"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
@@ -19,7 +20,12 @@
     "zod": "^4.0.17"
   },
   "type": "module",
-  "keywords": ["pacman", "map", "generator", "game"],
+  "keywords": [
+    "pacman",
+    "map",
+    "generator",
+    "game"
+  ],
   "author": "parkerstovall",
   "license": "MIT",
   "description": "Generates a random pacman map",
