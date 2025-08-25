@@ -15,9 +15,14 @@ export type ManagerArgs = {
 export class MapBuilderManager {
   public jobsDone: boolean = false
   private builders: MapBuilder[]
+  private readonly debug: boolean = false
+  private readonly debug_id: string = Math.random().toString(36).substring(2, 7)
 
   constructor(args: ManagerArgs) {
     const numBuilders = getRandomInt(2, 4) // 2 to 4 builders
+    this.debug = args.opts.debug ?? false
+    this.log(`Creating ${numBuilders} builders`)
+
     this.builders = []
     const ignoreDir: Position[] = []
 
@@ -68,7 +73,15 @@ export class MapBuilderManager {
     })
 
     this.jobsDone = this.builders.every((builder) => builder.jobsDone)
+    this.log(`All jobs done: ${this.jobsDone}`)
+    this.log(`Generated positions: ${JSON.stringify(retPositions)}`)
 
     return retPositions
+  }
+
+  private log(message: string) {
+    if (this.debug) {
+      console.log(`Manager '${this.debug_id}': ${message}`)
+    }
   }
 }

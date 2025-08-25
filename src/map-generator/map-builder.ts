@@ -23,17 +23,24 @@ export class MapBuilder {
   private readonly MAX_HEIGHT: number
   private readonly MIN_WIDTH: number = 1
   private readonly MIN_HEIGHT: number = 1
+  private readonly debug: boolean = false
+  private readonly debug_id: string = Math.random().toString(36).substring(2, 7)
 
   constructor(args: BuilderArgs) {
     this.MAX_WIDTH = args.width - 1
     this.MAX_HEIGHT = args.height - 2
     this.position = { x: args.x, y: args.y }
     this.direction = { x: args.directionX, y: args.directionY }
+    this.debug = args.opts.debug ?? false
     this.distanceBeforeTurn = getRandomInt(
       args.opts.mapMaker.builder.minDistanceBeforeTurn,
       args.opts.mapMaker.builder.maxDistanceBeforeTurn,
       false,
     )
+
+    this.log(`Created:
+        Direction: (${this.direction.x}, ${this.direction.y})
+        Distance Before Turn: ${this.distanceBeforeTurn}`)
   }
 
   public generatePath(blocks: BlockMap): Position {
@@ -41,7 +48,10 @@ export class MapBuilder {
     this.position.y += this.direction.y
     this.stepsTaken++
 
+    this.log(`moved, steps taken: ${this.stepsTaken}`)
+
     if (blocks[this.position.y]?.[this.position.x]?.type === 'empty') {
+      this.log('found empty space')
       this.jobsDone = true
       return this.position
     }
@@ -51,6 +61,7 @@ export class MapBuilder {
       !this.checkAndHandleCollision() &&
       this.stepsTaken >= this.distanceBeforeTurn
     ) {
+      this.log(`reached distance before turn: ${this.distanceBeforeTurn}`)
       const reversedDir = { x: -this.direction.x, y: -this.direction.y }
       const ignoredDirs = [
         this.direction,
@@ -71,6 +82,7 @@ export class MapBuilder {
   }
 
   private turn(newDirection: Position) {
+    this.log(`turning to (${newDirection.x}, ${newDirection.y})`)
     this.direction = newDirection
     this.stepsTaken = 0
     this.distanceBeforeTurn = getRandomInt(4, 12, false)
@@ -107,6 +119,7 @@ export class MapBuilder {
       (this.position.y >= this.MAX_HEIGHT && this.direction.y > 0)
     ) {
       const blockedDirs = this.getBlockedDirections()
+      this.log(`blocked: ${JSON.stringify(blockedDirs)}`)
       const randDir = getRandomDirection(blockedDirs) // or pick a safe perpendicular direction
       if (!randDir) {
         this.jobsDone = true
@@ -117,5 +130,13 @@ export class MapBuilder {
     }
 
     return false
+  }
+
+  private log(message: string) {
+    if (this.debug) {
+      console.log(
+        `Builder '${this.debug_id}', pos: (${this.position.x}, ${this.position.y}): ${message}`,
+      )
+    }
   }
 }

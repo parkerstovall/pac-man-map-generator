@@ -1,152 +1,217 @@
 import { useState } from 'react'
 import './App.css'
-import { generateMap } from './map-generator/generator'
-import type { BlockMap } from './map-generator/types'
+import type { MapGeneratorOptions } from './map-generator/options'
+import Map from './map'
 
 function App() {
-  const [map, setMap] = useState<BlockMap>(generateMap())
+  const [mapOptions, setMapOptions] = useState<MapGeneratorOptions>({
+    map: {
+      teleporter: {
+        min: 1,
+        max: 4,
+      },
+      pathCount: {
+        min: 300,
+      },
+    },
+    mapMaker: {
+      manager: {
+        min: 6,
+        max: 10,
+      },
+      builder: {
+        minDistanceBeforeTurn: 4,
+        maxDistanceBeforeTurn: 12,
+      },
+    },
+  })
 
   return (
     <div className="App">
-      <h1>Pac-Man Map</h1>
+      <h1>Pac-Man Map Generator</h1>
 
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <button
-          onClick={() => {
-            //console.clear()
-            setMap(generateMap())
+      <div
+        style={{
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '20px',
+          alignItems: 'flex-start',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-start',
+            gap: '5px',
           }}
         >
-          Generate New Map
-        </button>
-      </div>
-      <div className="map">
-        {map.map((row) =>
-          row.map((block) => {
-            const style: React.CSSProperties = {
-              gridColumn: block.position.x + 1,
-              gridRow: block.position.y + 1,
-            }
+          <label>Min Paths:</label>
+          <input
+            type="number"
+            defaultValue={mapOptions.map.pathCount?.min ?? ''}
+            id="min-paths-input"
+          />
+          <label>Max Paths:</label>
+          <input
+            type="number"
+            defaultValue={mapOptions.map.pathCount?.max ?? ''}
+            id="max-paths-input"
+          />
+          <label>Max Teleporters:</label>
+          <input
+            type="number"
+            defaultValue={mapOptions.map.teleporter?.max ?? ''}
+            id="max-teleporters-input"
+          />
+          <label>Min Teleporters:</label>
+          <input
+            type="number"
+            defaultValue={mapOptions.map.teleporter?.min ?? ''}
+            id="min-teleporters-input"
+          />
+          <label>Min Managers:</label>
+          <input
+            type="number"
+            defaultValue={mapOptions.mapMaker.manager.min}
+            id="min-managers-input"
+          />
+          <label>Max Managers:</label>
+          <input
+            type="number"
+            defaultValue={mapOptions.mapMaker.manager.max}
+            id="max-managers-input"
+          />
+          <label>Min Distance Before Turn:</label>
+          <input
+            type="number"
+            defaultValue={mapOptions.mapMaker.builder.minDistanceBeforeTurn}
+            id="min-distance-input"
+          />
+          <label>Max Distance Before Turn:</label>
+          <input
+            type="number"
+            defaultValue={mapOptions.mapMaker.builder.maxDistanceBeforeTurn}
+            id="max-distance-input"
+          />
+          <label>Debug:</label>
+          <input
+            type="checkbox"
+            defaultChecked={mapOptions.debug ?? false}
+            id="debug-input"
+          />
+        </div>
 
-            if (block.type === 'wall') {
-              if (
-                map[block.position.y][block.position.x + 1]?.type !== 'wall'
-              ) {
-                if (
-                  block.position.y > 0 &&
-                  map[block.position.y - 1][block.position.x]?.type !== 'wall'
-                ) {
-                  style.borderTopRightRadius = '10px'
-                }
-                if (
-                  block.position.y < map.length - 1 &&
-                  map[block.position.y + 1][block.position.x]?.type !== 'wall'
-                ) {
-                  style.borderBottomRightRadius = '10px'
-                }
-              } else {
-                style.borderRight = 'none'
-              }
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '10px',
+          }}
+        >
+          <button
+            onClick={() => {
+              const minPaths = parseInt(
+                (document.getElementById('min-paths-input') as HTMLInputElement)
+                  .value,
+              )
+              const maxPaths = parseInt(
+                (document.getElementById('max-paths-input') as HTMLInputElement)
+                  .value,
+              )
+              const minTeleporters = parseInt(
+                (
+                  document.getElementById(
+                    'min-teleporters-input',
+                  ) as HTMLInputElement
+                ).value,
+              )
+              const maxTeleporters = parseInt(
+                (
+                  document.getElementById(
+                    'max-teleporters-input',
+                  ) as HTMLInputElement
+                ).value,
+              )
+              const minManagers = parseInt(
+                (
+                  document.getElementById(
+                    'min-managers-input',
+                  ) as HTMLInputElement
+                ).value,
+              )
+              const maxManagers = parseInt(
+                (
+                  document.getElementById(
+                    'max-managers-input',
+                  ) as HTMLInputElement
+                ).value,
+              )
+              const minDistance = parseInt(
+                (
+                  document.getElementById(
+                    'min-distance-input',
+                  ) as HTMLInputElement
+                ).value,
+              )
+              const maxDistance = parseInt(
+                (
+                  document.getElementById(
+                    'max-distance-input',
+                  ) as HTMLInputElement
+                ).value,
+              )
+              const debug = (
+                document.getElementById('debug-input') as HTMLInputElement
+              ).checked
 
-              if (
-                map[block.position.y][block.position.x - 1]?.type !== 'wall'
-              ) {
-                if (
-                  block.position.y > 0 &&
-                  map[block.position.y - 1][block.position.x]?.type !== 'wall'
-                ) {
-                  style.borderTopLeftRadius = '10px'
-                }
-                if (
-                  block.position.y < map.length - 1 &&
-                  map[block.position.y + 1][block.position.x]?.type !== 'wall'
-                ) {
-                  style.borderBottomLeftRadius = '10px'
-                }
-              } else {
-                style.borderLeft = 'none'
+              const newMapOptions = {
+                ...mapOptions,
+                map: {
+                  ...mapOptions.map,
+                  pathCount: {
+                    min: isNaN(minPaths) ? undefined : minPaths,
+                    max: isNaN(maxPaths) ? undefined : maxPaths,
+                  },
+                  teleporter: {
+                    min: isNaN(minTeleporters)
+                      ? mapOptions.map.teleporter.min
+                      : minTeleporters,
+                    max: isNaN(maxTeleporters)
+                      ? mapOptions.map.teleporter.max
+                      : maxTeleporters,
+                  },
+                },
+                mapMaker: {
+                  ...mapOptions.mapMaker,
+                  manager: {
+                    min: isNaN(minManagers)
+                      ? mapOptions.mapMaker.manager.min
+                      : minManagers,
+                    max: isNaN(maxManagers)
+                      ? mapOptions.mapMaker.manager.max
+                      : maxManagers,
+                  },
+                  builder: {
+                    minDistanceBeforeTurn: isNaN(minDistance)
+                      ? mapOptions.mapMaker.builder.minDistanceBeforeTurn
+                      : minDistance,
+                    maxDistanceBeforeTurn: isNaN(maxDistance)
+                      ? mapOptions.mapMaker.builder.maxDistanceBeforeTurn
+                      : maxDistance,
+                  },
+                },
+                debug,
               }
-
-              if (
-                map[block.position.y - 1]?.[block.position.x]?.type === 'wall'
-              ) {
-                style.borderTop = 'none'
-              }
-
-              if (
-                map[block.position.y + 1]?.[block.position.x]?.type === 'wall'
-              ) {
-                style.borderBottom = 'none'
-              }
-
-              if (
-                block.position.x === 0 &&
-                map[block.position.y + 1]?.[block.position.x]?.type ===
-                  'teleporter'
-              ) {
-                style.borderBottomLeftRadius = 'none'
-              }
-
-              if (
-                block.position.x === map[0].length - 1 &&
-                map[block.position.y + 1]?.[block.position.x]?.type ===
-                  'teleporter'
-              ) {
-                style.borderBottomRightRadius = 'none'
-              }
-
-              if (
-                block.position.x === 0 &&
-                map[block.position.y - 1]?.[block.position.x]?.type ===
-                  'teleporter'
-              ) {
-                style.borderTopLeftRadius = 'none'
-              }
-
-              if (
-                block.position.x === map[0].length - 1 &&
-                map[block.position.y - 1]?.[block.position.x]?.type ===
-                  'teleporter'
-              ) {
-                style.borderTopRightRadius = 'none'
-              }
-            }
-
-            if (block.type === 'ghost-house') {
-              style.borderRadius = '0'
-              if (block.position.y === 12) {
-                style.borderTop = '1px solid white'
-              }
-              if (block.position.y === 16) {
-                style.borderBottom = '1px solid white'
-              }
-              if (block.position.x === 10) {
-                style.borderLeft = '1px solid white'
-              }
-              if (block.position.x === 17) {
-                style.borderRight = '1px solid white'
-              }
-              if (
-                (block.position.x === 13 || block.position.x === 14) &&
-                block.position.y === 12
-              ) {
-                style.borderTop = 'none'
-              }
-            }
-
-            return (
-              <div
-                onClick={() => {
-                  console.log(block)
-                }}
-                key={`${block.position.x}-${block.position.y}`}
-                className={`block ${block.type}`}
-                style={style}
-                title={`(${block.position.x}, ${block.position.y})`}
-              ></div>
-            )
-          }),
-        )}
+              setMapOptions(newMapOptions)
+            }}
+          >
+            Regenerate Map
+          </button>
+          <Map mapOptions={mapOptions} />
+        </div>
       </div>
     </div>
   )

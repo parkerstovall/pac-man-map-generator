@@ -23,7 +23,7 @@
  */
 
 //import { generateNextBlock } from './block-generators'
-import { height, width } from './constants'
+import { halfWidth, height, width } from './constants'
 import { MapBuilderManager } from './map-builder-manager'
 import { mapGeneratorOptionsSchema, type MapGeneratorOptions } from './options'
 import { getRandomInt } from './shared'
@@ -32,14 +32,12 @@ import type { Block, BlockMap, MapStats, Position } from './types'
 export function generateMap(
   opts: MapGeneratorOptions = {
     map: {
-      width: 28,
-      height: 31,
       teleporter: {
         min: 1,
         max: 4,
       },
       pathCount: {
-        min: 250,
+        min: 300,
       },
     },
     mapMaker: {
@@ -52,99 +50,100 @@ export function generateMap(
         maxDistanceBeforeTurn: 12,
       },
     },
-    debug: true,
   },
 ) {
   mapGeneratorOptionsSchema.parse(opts)
   if (opts.debug) {
+    console.clear()
     console.log('Generating map with options:', opts)
   }
 
-  const blocks: BlockMap = []
-  const halfWidth = Math.floor(width / 2)
+  let blocks: BlockMap = []
 
-  // At first, everything is a wall
-  for (let y = 0; y < height; y++) {
-    blocks.push([])
-    const row = blocks[y]
-    for (let x = 0; x < halfWidth; x++) {
-      if (y >= 12 && y <= 16 && x >= 10 && x <= 13) {
-        row.push({
-          type: 'ghost-house',
-          position: { x, y },
-        })
-      } else if (y >= 11 && y <= 17 && x >= 9 && x <= 14) {
-        row.push({
-          type: 'empty',
-          position: { x, y },
-        })
-      } else {
-        row.push({
-          type: 'wall',
-          position: { x, y },
-        })
+  while (!validateMap(blocks, opts)) {
+    blocks = []
+
+    // At first, everything is a wall
+    for (let y = 0; y < height; y++) {
+      blocks.push([])
+      const row = blocks[y]
+      for (let x = 0; x < halfWidth; x++) {
+        if (y >= 12 && y <= 16 && x >= 10 && x <= 13) {
+          row.push({
+            type: 'ghost-house',
+            position: { x, y },
+          })
+        } else if (y >= 11 && y <= 17 && x >= 9 && x <= 14) {
+          row.push({
+            type: 'empty',
+            position: { x, y },
+          })
+        } else {
+          row.push({
+            type: 'wall',
+            position: { x, y },
+          })
+        }
       }
     }
-  }
 
-  // Create a list of 6 - 10 foremen to manage the builders
-  const foremen: MapBuilderManager[] = []
-  const numForemen = getRandomInt(
-    opts.mapMaker.manager.min,
-    opts.mapMaker.manager.max,
-  )
-  if (opts.debug) {
-    console.log(`Creating ${numForemen} foremen...`)
-  }
-
-  for (let i = 0; i < numForemen; i++) {
-    const position = {
-      x: getRandomInt(2, halfWidth - 2, true),
-      y: getRandomInt(2, height - 2, true),
-    }
-
-    while (blocks[position.y][position.x].type !== 'wall') {
-      position.x = getRandomInt(2, halfWidth - 2, true)
-      position.y = getRandomInt(2, height - 2, true)
-    }
-
-    foremen.push(
-      new MapBuilderManager({
-        x: position.x,
-        y: position.y,
-        width: width / 2,
-        height,
-        opts,
-      }),
+    // Create a list of 6 - 10 foremen to manage the builders
+    const foremen: MapBuilderManager[] = []
+    const numForemen = getRandomInt(
+      opts.mapMaker.manager.min,
+      opts.mapMaker.manager.max,
     )
-  }
+    if (opts.debug) {
+      console.log(`Creating ${numForemen} foremen...`)
+    }
 
-  while (foremen.length > 0) {
-    foremen.forEach((manager, index) => {
-      const newPositions = manager.generatePaths(blocks)
-      newPositions.forEach((pos) => {
-        blocks[pos.y][pos.x] = {
-          type: 'empty',
-          position: { x: pos.x, y: pos.y },
+    for (let i = 0; i < numForemen; i++) {
+      const position = {
+        x: getRandomInt(2, halfWidth - 2, true),
+        y: getRandomInt(2, height - 2, true),
+      }
+
+      while (blocks[position.y][position.x].type !== 'wall') {
+        position.x = getRandomInt(2, halfWidth - 2, true)
+        position.y = getRandomInt(2, height - 2, true)
+      }
+
+      foremen.push(
+        new MapBuilderManager({
+          x: position.x,
+          y: position.y,
+          width: halfWidth,
+          height,
+          opts,
+        }),
+      )
+    }
+
+    while (foremen.length > 0) {
+      foremen.forEach((manager, index) => {
+        const newPositions = manager.generatePaths(blocks)
+        newPositions.forEach((pos) => {
+          blocks[pos.y][pos.x] = {
+            type: 'empty',
+            position: { x: pos.x, y: pos.y },
+          }
+        })
+
+        if (manager.jobsDone) {
+          foremen.splice(index, 1)
         }
       })
-
-      if (manager.jobsDone) {
-        foremen.splice(index, 1)
-      }
-    })
-  }
-
-  const cleanMap = cleanUpMap(blocks, opts)
-
-  if (!validateMap(cleanMap, opts)) {
-    if (opts.debug) {
-      console.log('Map did not pass validation, regenerating...')
     }
-    return generateMap(opts)
+
+    blocks = cleanUpMap(blocks, opts)
+
+    if (opts.debug) {
+      console.log('Final map:')
+      console.log(blocks)
+    }
   }
 
-  return cleanMap
+  return blocks
 }
 
 function cleanUpMap(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
@@ -156,7 +155,7 @@ function cleanUpMap(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   // In that case, we just re-generate the map
   const connectedBlocks = connectDisconnectedRegions(blocks)
   if (!connectedBlocks) {
-    return generateMap(opts)
+    return []
   }
 
   blocks = connectedBlocks
@@ -168,7 +167,7 @@ function duplicateMapHalf(blocks: BlockMap) {
   for (let y = 0; y < height; y++) {
     const row = blocks[y]
     const mirroredRow = []
-    for (let x = 0; x < width / 2; x++) {
+    for (let x = 0; x < halfWidth; x++) {
       const mirroredBlock = generateBlockMirror(blocks, x, y)
       mirroredRow.push(mirroredBlock)
     }
@@ -206,11 +205,10 @@ function cleanMiddleAisle(blocks: BlockMap): BlockMap {
 
 function cleanUpOrphans(blocks: BlockMap): BlockMap {
   let hasOrphans = false
-  const maxWidth = width / 2
   do {
     hasOrphans = false
     for (let y = 0; y < height; y++) {
-      for (let x = 0; x < maxWidth; x++) {
+      for (let x = 0; x < halfWidth; x++) {
         const block = blocks[y][x]
         if (block.type === 'empty') {
           const neighbors = [
@@ -220,7 +218,7 @@ function cleanUpOrphans(blocks: BlockMap): BlockMap {
             blocks[y][x + 1],
           ].filter((b) => b?.type === 'empty')
 
-          if (x === maxWidth - 1) {
+          if (x === halfWidth - 1) {
             if (neighbors.length === 0) {
               block.type = 'wall'
               hasOrphans = true
@@ -238,14 +236,22 @@ function cleanUpOrphans(blocks: BlockMap): BlockMap {
 
 function addTeleporters(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   const count = getRandomInt(opts.map.teleporter.min, opts.map.teleporter.max)
-
+  if (opts.debug) {
+    console.log(`Adding ${count} teleporters...`)
+  }
   // Add teleporters
+  const addedY: number[] = []
   for (let i = 0; i < count; i++) {
-    const y = getRandomInt(1, height - 2, true)
+    let y = getRandomInt(1, height - 2, true)
+    while (addedY.includes(y)) {
+      y = getRandomInt(1, height - 2, true)
+    }
+
     blocks[y][0] = {
       type: 'teleporter',
       position: { x: 0, y },
     }
+    addedY.push(y)
   }
 
   return blocks
@@ -262,7 +268,7 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
     const attemptedConnections: Position[] = []
     let breakLoop = false
     for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width / 2; x++) {
+      for (let x = 0; x < halfWidth; x++) {
         if (
           (blocks[y][x].type === 'empty' ||
             blocks[y][x].type === 'teleporter') &&
@@ -307,11 +313,11 @@ function connectDisconnectedRegions(blocks: BlockMap): BlockMap | null {
 
 function getInitialConnection(blocks: BlockMap) {
   const visited: boolean[][] = Array.from({ length: height }, () =>
-    Array(width / 2).fill(false),
+    Array(halfWidth).fill(false),
   )
   let starting: Position | null = null
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width / 2; x++) {
+    for (let x = 0; x < halfWidth; x++) {
       if (blocks[y][x].type === 'empty') {
         starting = { x, y }
         break
@@ -363,7 +369,7 @@ function tryConnectToNeighbors(
     const positions: Position[] = []
     let x = blockX + dx
     let y = blockY + dy
-    while (x > 0 && x < width / 2 && y > 0 && y < height) {
+    while (x > 0 && x < halfWidth && y > 0 && y < height) {
       positions.push({ x, y })
       if (
         ['empty', 'teleporter'].includes(blocks[y][x].type) &&

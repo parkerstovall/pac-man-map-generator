@@ -1,10 +1,9 @@
 import z from 'zod'
+import { height, width } from './constants'
 
 export const mapGeneratorOptionsSchema = z
   .object({
     map: z.object({
-      width: z.number().min(6),
-      height: z.number().min(5),
       pathCount: z
         .object({
           min: z.number().min(1).optional(),
@@ -28,18 +27,6 @@ export const mapGeneratorOptionsSchema = z
     }),
     debug: z.boolean().optional(),
   })
-  .refine((obj) => {
-    if (obj.map.width % 2 !== 0) {
-      return false
-    }
-    return true
-  }, 'Width must be an even number')
-  .refine((obj) => {
-    if (obj.map.height % 2 === 0) {
-      return false
-    }
-    return true
-  }, 'Height must be an odd number')
   .refine(
     (obj) =>
       !(obj.map.pathCount?.min && obj.map.pathCount?.max) ||
@@ -47,7 +34,7 @@ export const mapGeneratorOptionsSchema = z
     'Min path count must be less than or equal to max path count',
   )
   .refine(
-    (obj) => obj.map.teleporter.max < obj.map.height / 2,
+    (obj) => obj.map.teleporter.max < height / 2,
     'Max teleporter count must be less than half the height',
   )
   .refine(
@@ -58,16 +45,14 @@ export const mapGeneratorOptionsSchema = z
   )
   .refine(
     (obj) =>
-      !obj.map.pathCount?.max ||
-      obj.map.pathCount.max < (obj.map.width * obj.map.height) / 2,
+      !obj.map.pathCount?.max || obj.map.pathCount.max < (width * height) / 2,
     {
       message: 'Max total path blocks must be less than half the total blocks',
     },
   )
   .refine(
     (obj) =>
-      !obj.map.pathCount?.min ||
-      obj.map.pathCount.min < (obj.map.width * obj.map.height) / 2,
+      !obj.map.pathCount?.min || obj.map.pathCount.min < (width * height) / 2,
     {
       message: 'Min total path blocks must be less than half the total blocks',
     },
