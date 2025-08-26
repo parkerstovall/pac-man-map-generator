@@ -1,11 +1,12 @@
 {
     "compilerOptions": {
       "outDir": "dist",
-      "declaration": true,       // generates .d.ts files for consumers
+      "declaration": true,
       "declarationMap": true,
       "sourceMap": true,
       "target": "ES2020",
-      "module": "CommonJS",      // or "ESNext" depending on your needs
+      "module": "ESNext",
+      "moduleResolution": "Node",
       "strict": true,
       "esModuleInterop": true,
       "skipLibCheck": true
