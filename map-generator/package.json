@@ -1,11 +1,20 @@
 {
   "name": "pac-man-map-generator",
   "version": "1.0.0",
-  "main": "index.js",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "lint": "eslint ./src --fix",
-    "patch": "npm version patch --no-git-tag-version"
+    "patch": "npm version patch --no-git-tag-version",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
@@ -19,7 +28,6 @@
     "typescript-eslint": "^8.39.1",
     "zod": "^4.0.17"
   },
-  "type": "module",
   "keywords": [
     "pacman",
     "map",
