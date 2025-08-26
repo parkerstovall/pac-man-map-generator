@@ -1,4 +1,4 @@
-name: 'Publish to Github Package Registry'
+name: Tag and Release on Main
 
 on:
   push:
@@ -6,12 +6,48 @@ on:
       - main
 
 jobs:
-  Publish:
-    runs-on: ubuntu-latest
+  tag-and-release:
     defaults:
       run:
         working-directory: ./map-generator
+        
+    runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from package.json
+        id: pkg
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.pkg.outputs.version }}"
+          git push origin "v${{ steps.pkg.outputs.version }}"
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.pkg.outputs.version }}
+          name: Release v${{ steps.pkg.outputs.version }}
+          draft: false
+          prerelease: false
+          
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -19,7 +55,10 @@ jobs:
           cache-dependency-path: ./map-generator/package-lock.json
           registry-url: "https://registry.npmjs.org"
 
-      - run: npm ci
-      - run: npm publish
+      - name: Publish NPM package
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          npm ci
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
