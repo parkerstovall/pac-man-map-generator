@@ -30,10 +30,10 @@ jobs:
       - name: Check if tag exists
         id: check_tag
         run: |
-          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+          if git rev-parse -q --verify "refs/tags/v${{ steps.pkg.outputs.version }}" >/dev/null; then
+              echo "exists=true"
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+              echo "exists=false"
           fi
 
       - name: Create tag
