@@ -15,6 +15,9 @@
     "patch": "npm version patch --no-git-tag-version",
     "prepublishOnly": "npm run build"
   },
+  "dependencies": {
+    "zod": "^4.0.17"
+  },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@vitejs/plugin-react": "^5.0.0",
