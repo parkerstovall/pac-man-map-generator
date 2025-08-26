@@ -10,13 +10,18 @@ jobs:
     defaults:
       run:
         working-directory: ./map-generator
+    
+    permissions:
+      contents: write
         
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
+          cache: "npm"
+          cache-dependency-path: ./map-generator/package-lock.json
+          registry-url: "https://registry.npmjs.org"
 
       - name: Get version from package.json
         id: pkg
@@ -47,13 +52,6 @@ jobs:
           name: Release v${{ steps.pkg.outputs.version }}
           draft: false
           prerelease: false
-          
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          cache: "npm"
-          cache-dependency-path: ./map-generator/package-lock.json
-          registry-url: "https://registry.npmjs.org"
 
       - name: Publish NPM package
         if: steps.check_tag.outputs.exists == 'false'
