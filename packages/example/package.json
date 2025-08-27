@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "pac-man-map-generator": "*"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
