@@ -1,0 +1,8 @@
+{
+    "name": "map-generator-monorepo",
+    "private": true,
+    "workspaces": [
+      "packages/*"
+    ]
+  }
+  
