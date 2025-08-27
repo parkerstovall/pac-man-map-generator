@@ -9,7 +9,7 @@ npm install pac-man-map-generator
 ```
 
 
-## 🚀 Usage
+## 🚀 Developemnt
 
 A full example can be found in this repo, under the example folder, along with a playground for messing with the options.
 
