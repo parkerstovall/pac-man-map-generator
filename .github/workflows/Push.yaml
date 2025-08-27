@@ -29,9 +29,9 @@ jobs:
         id: check_tag
         run: |
           if git ls-remote --tags origin | grep -q "refs/tags/v${{ steps.pkg.outputs.version }}$"; then
-              echo "exists=true"
+              echo "exists=true" >> $GITHUB_OUTPUT
           else
-              echo "exists=false"
+              echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create tag
