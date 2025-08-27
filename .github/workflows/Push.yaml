@@ -28,11 +28,12 @@ jobs:
       - name: Check if tag exists
         id: check_tag
         run: |
-          if git rev-parse -q --verify "refs/tags/v${{ steps.pkg.outputs.version }}" >/dev/null; then
+          if git ls-remote --tags origin | grep -q "refs/tags/v${{ steps.pkg.outputs.version }}$"; then
               echo "exists=true"
           else
               echo "exists=false"
           fi
+
 
       - name: Create tag
         if: steps.check_tag.outputs.exists == 'false'
