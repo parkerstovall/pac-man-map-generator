@@ -7,9 +7,6 @@ on:
 
 jobs:
   tag-and-release:
-    defaults:
-      run:
-        working-directory: ./map-generator
     
     permissions:
       contents: write
@@ -20,20 +17,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           cache: "npm"
-          cache-dependency-path: ./map-generator/package-lock.json
           registry-url: "https://registry.npmjs.org"
 
       - name: Get version from package.json
         id: pkg
-        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+        run: |
+          cd packages/pac-man-map-generator
+          echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
 
       - name: Check if tag exists
         id: check_tag
         run: |
-          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+          if git rev-parse -q --verify "refs/tags/v${{ steps.pkg.outputs.version }}" >/dev/null; then
+              echo "exists=true"
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+              echo "exists=false"
           fi
 
       - name: Create tag
@@ -57,6 +55,8 @@ jobs:
         if: steps.check_tag.outputs.exists == 'false'
         run: |
           npm ci
+
+          cd packages/pac-man-map-generator
           npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}

@@ -1,0 +1,11 @@
+{
+    "name": "map-generator-monorepo",
+    "private": true,
+    "scripts": {
+      "dev": "cd packages/pac-man-map-generator && npm run build && cd ../example && npm run dev"
+    },
+    "workspaces": [
+      "packages/*"
+    ]
+  }
+  
