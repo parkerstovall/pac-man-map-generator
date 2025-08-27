@@ -34,7 +34,6 @@ jobs:
               echo "exists=false"
           fi
 
-
       - name: Create tag
         if: steps.check_tag.outputs.exists == 'false'
         run: |
