@@ -7,13 +7,19 @@ import unusedImports from 'eslint-plugin-unused-imports'
 
 export default defineConfig([
   {
-    files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
+    files: ['**/*.{ts,jsx,tsx}'],
     plugins: { js, 'unused-imports': unusedImports },
     extends: ['js/recommended'],
+    
   },
   {
-    files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
-    languageOptions: { globals: globals.browser },
+    files: ['**/*.{ts,jsx,tsx}'],
+    languageOptions: { 
+      globals: globals.browser, 
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      } 
+    },
   },
   tseslint.configs.recommended,
   pluginPrettier,

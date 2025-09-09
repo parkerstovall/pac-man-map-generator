@@ -1,17 +1,21 @@
 import {
   generateMap,
   type MapGeneratorOptions,
-  type BlockMap,
   type Block,
+  type PacManMap,
 } from 'pac-man-map-generator'
 import { useEffect, useState } from 'react'
 
 export function Map({ mapOptions }: { mapOptions: MapGeneratorOptions }) {
-  const [map, setMap] = useState<BlockMap>(() => generateMap(mapOptions))
+  const [map, setMap] = useState<PacManMap>()
 
   useEffect(() => {
     setMap(generateMap(mapOptions))
   }, [mapOptions])
+
+  if (!map) {
+    return <div>Loading map...</div>
+  }
 
   const getBlockStyle = (block: Block) => {
     const style: React.CSSProperties = {
@@ -20,7 +24,10 @@ export function Map({ mapOptions }: { mapOptions: MapGeneratorOptions }) {
     }
 
     if (block.type === 'wall') {
-      if (map[block.position.y][block.position.x + 1]?.type !== 'wall') {
+      if (
+        map[block.position.y][block.position.x + 1] &&
+        map[block.position.y][block.position.x + 1]?.type !== 'wall'
+      ) {
         if (
           block.position.y > 0 &&
           map[block.position.y - 1][block.position.x]?.type !== 'wall'
@@ -37,7 +44,10 @@ export function Map({ mapOptions }: { mapOptions: MapGeneratorOptions }) {
         style.borderRight = 'none'
       }
 
-      if (map[block.position.y][block.position.x - 1]?.type !== 'wall') {
+      if (
+        map[block.position.y][block.position.x - 1] &&
+        map[block.position.y][block.position.x - 1]?.type !== 'wall'
+      ) {
         if (
           block.position.y > 0 &&
           map[block.position.y - 1][block.position.x]?.type !== 'wall'
@@ -54,11 +64,17 @@ export function Map({ mapOptions }: { mapOptions: MapGeneratorOptions }) {
         style.borderLeft = 'none'
       }
 
-      if (map[block.position.y - 1]?.[block.position.x]?.type === 'wall') {
+      if (
+        !map[block.position.y - 1]?.[block.position.x] ||
+        map[block.position.y - 1]?.[block.position.x]?.type === 'wall'
+      ) {
         style.borderTop = 'none'
       }
 
-      if (map[block.position.y + 1]?.[block.position.x]?.type === 'wall') {
+      if (
+        !map[block.position.y + 1]?.[block.position.x] ||
+        map[block.position.y + 1]?.[block.position.x]?.type === 'wall'
+      ) {
         style.borderBottom = 'none'
       }
 
@@ -127,8 +143,21 @@ export function Map({ mapOptions }: { mapOptions: MapGeneratorOptions }) {
 
   return (
     <div className="map">
-      {map.map((row) =>
-        row.map((block) => {
+      {map.map((row, rowIndex) =>
+        row.map((block, colIndex) => {
+          if (!block) {
+            return (
+              <div
+                onClick={() => {
+                  console.log('null block')
+                }}
+                title={`(${colIndex}, ${rowIndex})`}
+                key={`(${colIndex}, ${rowIndex})`}
+                className="block"
+              ></div>
+            )
+          }
+
           return (
             <div
               onClick={() => {

@@ -13,8 +13,9 @@ export type Block = {
 
 export type BlockMap = Block[][]
 
+export type PacManMap = (Block | null)[][]
+
 export type MapStats = {
   totalPathBlocks: number
-  totalWallBlocks: number
   totalTeleporterBlocks: number
 }

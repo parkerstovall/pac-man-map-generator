@@ -1,7 +1,7 @@
 import { MapBuilderManager } from './map-builder-manager'
 import { mapGeneratorOptionsSchema, type MapGeneratorOptions } from './options'
 import { getRandomInt } from './shared'
-import type { Block, BlockMap, MapStats, Position } from './types'
+import type { Block, BlockMap, MapStats, PacManMap, Position } from './types'
 
 export function generateMap(
   opts: MapGeneratorOptions = {
@@ -29,7 +29,7 @@ export function generateMap(
       },
     },
   },
-) {
+): PacManMap {
   mapGeneratorOptionsSchema.parse(opts)
   if (opts.debug) {
     console.clear()
@@ -49,7 +49,7 @@ export function generateMap(
     }
   }
 
-  return blocks
+  return removeUnneededWalls(blocks)
 }
 
 function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
@@ -289,6 +289,35 @@ function addTeleporters(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   return blocks
 }
 
+// Remove walls that are completely surrounded by other walls
+// These walls are unneeded and just take up space
+function removeUnneededWalls(blocks: BlockMap): PacManMap {
+  return blocks.map((row) =>
+    row.map((block) => {
+      if (block.type !== 'wall') {
+        return block
+      }
+
+      const neighbors = [
+        blocks[block.position.y - 1]?.[block.position.x],
+        blocks[block.position.y + 1]?.[block.position.x],
+        blocks[block.position.y]?.[block.position.x - 1],
+        blocks[block.position.y]?.[block.position.x + 1],
+        blocks[block.position.y - 1]?.[block.position.x - 1],
+        blocks[block.position.y - 1]?.[block.position.x + 1],
+        blocks[block.position.y + 1]?.[block.position.x - 1],
+        blocks[block.position.y + 1]?.[block.position.x + 1],
+      ].filter((b) => b && b.type !== 'wall')
+
+      if (neighbors.length === 0) {
+        return null
+      }
+
+      return block
+    }),
+  )
+}
+
 function connectDisconnectedRegions(
   blocks: BlockMap,
   opts: MapGeneratorOptions,
@@ -474,18 +503,15 @@ function validateMap(blocks: BlockMap, opts: MapGeneratorOptions): boolean {
 
 function getMapStats(blocks: BlockMap): MapStats {
   let totalPathBlocks = 0
-  let totalWallBlocks = 0
   let totalTeleporterBlocks = 0
 
   blocks.flat().forEach((block) => {
     if (block.type === 'empty') {
       totalPathBlocks++
-    } else if (block.type === 'wall') {
-      totalWallBlocks++
     } else if (block.type === 'teleporter') {
       totalTeleporterBlocks++
     }
   })
 
-  return { totalPathBlocks, totalWallBlocks, totalTeleporterBlocks }
+  return { totalPathBlocks, totalTeleporterBlocks }
 }

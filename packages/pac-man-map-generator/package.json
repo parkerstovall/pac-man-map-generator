@@ -1,8 +1,9 @@
 {
   "name": "pac-man-map-generator",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -11,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "dev": "tsc -w",
     "lint": "eslint ./src --fix",
     "patch": "npm version patch --no-git-tag-version",
     "prepublishOnly": "npm run build"

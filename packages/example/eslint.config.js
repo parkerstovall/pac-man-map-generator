@@ -13,13 +13,18 @@ export default defineConfig([
         version: 'detect',
       },
     },
-    files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
+    files: ['**/*.{ts,jsx,tsx}'],
     plugins: { js, pluginReact, 'unused-imports': unusedImports },
     extends: ['js/recommended'],
   },
   {
-    files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
-    languageOptions: { globals: globals.browser },
+    files: ['**/*.{ts,jsx,tsx}'],
+    languageOptions: { 
+      globals: globals.browser, 
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      } 
+    },
   },
   tseslint.configs.recommended,
   pluginReact.configs.flat.recommended,
