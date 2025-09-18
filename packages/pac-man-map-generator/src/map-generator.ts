@@ -31,25 +31,74 @@ export function generateMap(
   },
 ): PacManMap {
   mapGeneratorOptionsSchema.parse(opts)
+  const startTime = performance.now()
   if (opts.debug) {
     console.clear()
     console.log('Generating map with options:', opts)
   }
 
-  let blocks: BlockMap = buildMapSkeleton(opts)
-  blocks = cleanUpMap(blocks, opts)
+  let attempts = 0
+  let blocks: BlockMap = []
+  let bestMapStats: MapStats | null = null
 
-  while (!validateMap(blocks, opts)) {
-    blocks = buildMapSkeleton(opts)
-    blocks = cleanUpMap(blocks, opts)
-
-    if (opts.debug) {
-      console.log('Final map:')
-      console.log(blocks)
+  do {
+    attempts++
+    const { maxGenerationAttempts, maxTimeAllowedInMilliseconds } =
+      opts.generationConstraints || {}
+    if (opts.debug && maxGenerationAttempts) {
+      console.log(`Generation attempt ${attempts}/${maxGenerationAttempts}`)
     }
+
+    let loopBlocks = buildMapSkeleton(opts)
+    // loopBlocks = cleanMiddleAisle(loopBlocks, opts)
+    // blocks = duplicateMapHalf(loopBlocks, opts)
+    // break
+    loopBlocks = cleanUpMap(loopBlocks, opts)
+
+    // Max attempts is optional, but leaving it
+    // undefined means infinite attempts until a valid map is generated
+    const timeElapsed = performance.now() - startTime
+    const reachedTimeLimit =
+      maxTimeAllowedInMilliseconds &&
+      timeElapsed >= maxTimeAllowedInMilliseconds
+
+    const reachedAttemptLimit =
+      maxGenerationAttempts && attempts >= maxGenerationAttempts
+    if (reachedAttemptLimit || reachedTimeLimit) {
+      if (opts.debug) {
+        console.warn(
+          `Failed to generate valid map after ${attempts} attempts and ${timeElapsed} ms, using best attempt`,
+        )
+      }
+      break
+    }
+
+    const mapStats = getMapStats(loopBlocks)
+    if (mapStats.totalPathBlocks > (bestMapStats?.totalPathBlocks ?? 0)) {
+      if (opts.debug) {
+        console.log(
+          `New best map found with ${mapStats.totalPathBlocks} path blocks`,
+        )
+      }
+
+      bestMapStats = mapStats
+      blocks = loopBlocks
+    }
+  } while (!validateMap(blocks, opts))
+
+  if (opts.debug) {
+    console.log(`Map generated successfully in ${attempts} attempt(s)`)
+    console.log('Final map:')
+    console.log(blocks)
   }
 
-  return removeUnneededWalls(blocks)
+  const retMap = removeUnneededWalls(blocks)
+
+  if (opts.debug) {
+    console.log('Total generation time:', performance.now() - startTime, 'ms')
+  }
+
+  return retMap
 }
 
 function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
@@ -70,6 +119,24 @@ function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
     y: ghostHouseArea.y - 1,
     width: ghostHouseArea.width + 2,
     height: ghostHouseArea.height + 2,
+  }
+
+  let pacManY = Math.floor(ghostHouseArea.y + ghostHouseArea.height + 2)
+  let pacManX = Math.floor(ghostHouseArea.x + ghostHouseArea.width / 2 - 1)
+  if (pacManX % 2 === 0) {
+    pacManX += 1 // Ensure pacManX is odd
+  }
+
+  if (pacManY % 2 === 0) {
+    pacManY += 1 // Ensure pacManY is odd
+  }
+
+  // Calculate Pac-Man starting area (same width as ghost house)
+  const pacManStartArea = {
+    x: pacManX - 2,
+    y: pacManY,
+    width: ghostHouseArea.width + 3,
+    height: 1,
   }
 
   // At first, everything is a wall
@@ -97,6 +164,16 @@ function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
           type: 'empty',
           position: { x, y },
         })
+      } else if (
+        y >= pacManStartArea.y &&
+        y < pacManStartArea.y + pacManStartArea.height &&
+        x >= pacManStartArea.x &&
+        x < pacManStartArea.x + pacManStartArea.width
+      ) {
+        row.push({
+          type: 'empty',
+          position: { x, y },
+        })
       } else {
         row.push({
           type: 'wall',
@@ -112,19 +189,33 @@ function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
     opts.mapMaker.manager.min,
     opts.mapMaker.manager.max,
   )
+
   if (opts.debug) {
     console.log(`Creating ${numForemen} foremen...`)
   }
 
-  for (let i = 0; i < numForemen; i++) {
-    const position = {
-      x: getRandomInt(2, halfWidth - 2, true),
-      y: getRandomInt(2, height - 2, true),
-    }
+  if (opts.debug) {
+    console.log(`Pac-Man starting position: (${pacManX}, ${pacManY})`)
+  }
 
-    while (blocks[position.y][position.x].type !== 'wall') {
-      position.x = getRandomInt(2, halfWidth - 2, true)
-      position.y = getRandomInt(2, height - 2, true)
+  for (let i = 0; i < numForemen; i++) {
+    let position: { x: number; y: number }
+
+    if (i === 0) {
+      // First foreman starts adjacent to Pac-Man's position
+      // Find a wall position adjacent to the Pac-Man starting area
+      position = { x: pacManX - 2, y: pacManY } // Start one block to the left of Pac-Man
+    } else {
+      // Other foremen get random positions
+      position = {
+        x: getRandomInt(2, halfWidth - 2, true),
+        y: getRandomInt(2, height - 2, true),
+      }
+
+      while (blocks[position.y][position.x].type !== 'wall') {
+        position.x = getRandomInt(2, halfWidth - 2, true)
+        position.y = getRandomInt(2, height - 2, true)
+      }
     }
 
     foremen.push(
@@ -139,8 +230,11 @@ function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
   }
 
   while (foremen.length > 0) {
-    foremen.forEach((manager, index) => {
+    // Use reverse iteration to safely remove items
+    for (let i = foremen.length - 1; i >= 0; i--) {
+      const manager = foremen[i]
       const newPositions = manager.generatePaths(blocks)
+
       newPositions.forEach((pos) => {
         blocks[pos.y][pos.x] = {
           type: 'empty',
@@ -149,9 +243,9 @@ function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
       })
 
       if (manager.jobsDone) {
-        foremen.splice(index, 1)
+        foremen.splice(i, 1)
       }
-    })
+    }
   }
 
   return blocks
@@ -170,6 +264,7 @@ function cleanUpMap(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   }
 
   blocks = connectedBlocks
+
   return duplicateMapHalf(blocks, opts)
 }
 
@@ -234,33 +329,69 @@ function cleanUpOrphans(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   const { width, height } = opts.map.bounds
   const halfWidth = Math.floor(width / 2)
 
-  let hasOrphans = false
-  do {
-    hasOrphans = false
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < halfWidth; x++) {
-        const block = blocks[y][x]
-        if (block.type === 'empty') {
-          const neighbors = [
-            blocks[y - 1]?.[x],
-            blocks[y + 1]?.[x],
-            blocks[y][x - 1],
-            blocks[y][x + 1],
-          ].filter((b) => b?.type === 'empty')
+  // Track positions that need to be checked after changes
+  let positionsToCheck = new Set<string>()
 
-          if (x === halfWidth - 1) {
-            if (neighbors.length === 0) {
-              block.type = 'wall'
-              hasOrphans = true
+  // Initial population - check all empty blocks
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < halfWidth; x++) {
+      if (blocks[y][x].type === 'empty') {
+        positionsToCheck.add(`${x},${y}`)
+      }
+    }
+  }
+
+  while (positionsToCheck.size > 0) {
+    const newPositionsToCheck = new Set<string>()
+
+    for (const posStr of positionsToCheck) {
+      const [x, y] = posStr.split(',').map(Number)
+      const block = blocks[y][x]
+
+      if (block.type === 'empty' || block.type === 'teleporter') {
+        const neighbors = [
+          blocks[y - 1]?.[x],
+          blocks[y + 1]?.[x],
+          blocks[y][x - 1],
+          blocks[y][x + 1],
+        ].filter((b) => b?.type === 'empty' || b?.type === 'teleporter')
+
+        const shouldRemove =
+          x === halfWidth - 1 ? neighbors.length === 0 : neighbors.length <= 1
+
+        if (shouldRemove) {
+          block.type = 'wall'
+
+          // Add neighboring empty blocks to check next iteration
+          const adjacentPositions = [
+            { x: x - 1, y },
+            { x: x + 1, y },
+            { x, y: y - 1 },
+            { x, y: y + 1 },
+          ]
+
+          for (const pos of adjacentPositions) {
+            if (
+              pos.x >= 0 &&
+              pos.x < halfWidth &&
+              pos.y >= 0 &&
+              pos.y < height
+            ) {
+              if (
+                blocks[pos.y][pos.x].type === 'empty' ||
+                blocks[pos.y][pos.x].type === 'teleporter'
+              ) {
+                newPositionsToCheck.add(`${pos.x},${pos.y}`)
+              }
             }
-          } else if (neighbors.length <= 1) {
-            block.type = 'wall'
-            hasOrphans = true
           }
         }
       }
     }
-  } while (hasOrphans)
+
+    positionsToCheck = newPositionsToCheck
+  }
+
   return blocks
 }
 
@@ -271,6 +402,7 @@ function addTeleporters(blocks: BlockMap, opts: MapGeneratorOptions): BlockMap {
   if (opts.debug) {
     console.log(`Adding ${count} teleporters...`)
   }
+
   // Add teleporters
   const addedY: number[] = []
   for (let i = 0; i < count; i++) {
@@ -330,9 +462,11 @@ function connectDisconnectedRegions(
 
   let visited = getInitialConnection(blocks, opts)
   let visitedLength = visited.flat().filter((v) => v).length
+
   while (visitedLength < totalEmptyBlocks) {
     const attemptedConnections: Position[] = []
     let breakLoop = false
+
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < halfWidth; x++) {
         if (
@@ -486,15 +620,59 @@ function validateMap(blocks: BlockMap, opts: MapGeneratorOptions): boolean {
     console.log(`Map Stats:`, stats)
   }
 
+  const { width, height } = opts.map.bounds
+  const ghostHouseArea = {
+    x: width / 2 - 2,
+    y: height / 2 - 4,
+    width: 2,
+    height: 3,
+  }
+
+  let pacManY = Math.floor(ghostHouseArea.y + ghostHouseArea.height + 2)
+  let pacManX = Math.floor(ghostHouseArea.x + ghostHouseArea.width / 2 - 1)
+  if (pacManX % 2 === 0) {
+    pacManX += 1 // Ensure pacManX is odd
+  }
+
+  if (pacManY % 2 === 0) {
+    pacManY += 1 // Ensure pacManY is odd
+  }
+
+  if (blocks[pacManY]?.[pacManX]?.type !== 'empty') {
+    if (opts.debug) {
+      console.warn(
+        `Pac-Man position is not empty: (${pacManX}, ${pacManY}, ${blocks[pacManY]?.[pacManX]?.type})`,
+      )
+    }
+
+    return false
+  }
+
   if (blocks.length === 0) {
+    if (opts.debug) {
+      console.warn(`Map is empty due to failed connection attempts`)
+    }
+
     return false
   }
 
   if (opts.map.path?.min && stats.totalPathBlocks < opts.map.path.min) {
+    if (opts.debug) {
+      console.warn(
+        `Map is invalid: totalPathBlocks < min (${stats.totalPathBlocks} < ${opts.map.path.min})`,
+      )
+    }
+
     return false
   }
 
   if (opts.map.path?.max && stats.totalPathBlocks > opts.map.path.max) {
+    if (opts.debug) {
+      console.warn(
+        `Map is invalid: totalPathBlocks > max (${stats.totalPathBlocks} > ${opts.map.path.max})`,
+      )
+    }
+
     return false
   }
 
@@ -513,5 +691,5 @@ function getMapStats(blocks: BlockMap): MapStats {
     }
   })
 
-  return { totalPathBlocks, totalTeleporterBlocks }
+  return { totalPathBlocks, totalTeleporterBlocks: totalTeleporterBlocks / 2 }
 }

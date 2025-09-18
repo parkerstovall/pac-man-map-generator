@@ -16,6 +16,7 @@ export class MapBuilder {
   jobsDone: boolean = false
   private distanceBeforeTurn: number
   private position: Position
+  private opts: MapGeneratorOptions
 
   private direction: Position
   private stepsTaken: number = 0
@@ -27,6 +28,7 @@ export class MapBuilder {
   private readonly debug_id: string = Math.random().toString(36).substring(2, 7)
 
   constructor(args: BuilderArgs) {
+    this.opts = args.opts
     this.MAX_WIDTH = args.width - 1
     this.MAX_HEIGHT = args.height - 2
     this.position = { x: args.x, y: args.y }
@@ -85,7 +87,11 @@ export class MapBuilder {
     this.log(`turning to (${newDirection.x}, ${newDirection.y})`)
     this.direction = newDirection
     this.stepsTaken = 0
-    this.distanceBeforeTurn = getRandomInt(4, 12, false)
+    this.distanceBeforeTurn = getRandomInt(
+      this.opts.mapMaker.builder.minDistanceBeforeTurn,
+      this.opts.mapMaker.builder.maxDistanceBeforeTurn,
+      false,
+    )
   }
 
   private getBlockedDirections(): Position[] {
