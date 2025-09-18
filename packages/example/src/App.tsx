@@ -20,13 +20,18 @@ export function App() {
     },
     mapMaker: {
       manager: {
-        min: 6,
-        max: 10,
+        min: 20,
+        max: 25,
       },
       builder: {
-        minDistanceBeforeTurn: 4,
-        maxDistanceBeforeTurn: 12,
+        minDistanceBeforeTurn: 10,
+        maxDistanceBeforeTurn: 14,
       },
+    },
+    debug: true,
+    generationConstraints: {
+      maxGenerationAttempts: 150,
+      maxTimeAllowedInMilliseconds: 1000,
     },
   })
 

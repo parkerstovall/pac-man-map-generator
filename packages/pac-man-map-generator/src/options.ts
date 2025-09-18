@@ -29,6 +29,12 @@ export const mapGeneratorOptionsSchema = z
       }),
     }),
     debug: z.boolean().optional(),
+    generationConstraints: z
+      .object({
+        maxGenerationAttempts: z.number().min(1).optional(),
+        maxTimeAllowedInMilliseconds: z.number().min(1).optional(),
+      })
+      .optional(),
   })
   .refine(
     (obj) => obj.map.bounds.width % 2 === 0,

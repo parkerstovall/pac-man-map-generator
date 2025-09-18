@@ -11,7 +11,7 @@ export type ManagerArgs = {
   opts: MapGeneratorOptions
 }
 
-// The manager contains between 2 and 4 builders that each build a path
+// The manager contains between 2 and 4 builders that each build a path by default, but can be configured
 export class MapBuilderManager {
   public jobsDone: boolean = false
   private builders: MapBuilder[]
@@ -58,7 +58,6 @@ export class MapBuilderManager {
         }),
       )
 
-      ignoreDir.push({ x, y }) // Add the starting direction to ignore for the next builder
       startingDirection = getRandomDirection(ignoreDir)
     }
   }
