@@ -60,7 +60,7 @@ function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
 
   const ghostHouseArea = {
     x: width / 2 - 2,
-    y: height / 2 - 2,
+    y: height / 2 - 4,
     width: 2,
     height: 3,
   }
