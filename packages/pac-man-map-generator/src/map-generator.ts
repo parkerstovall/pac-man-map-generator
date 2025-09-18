@@ -59,10 +59,10 @@ function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
   const halfWidth = Math.floor(width / 2)
 
   const ghostHouseArea = {
-    x: width / 2 - 4,
-    y: height / 2 - 2,
-    width: 8,
-    height: 5,
+    x: width / 2 - 2,
+    y: height / 2 - 4,
+    width: 2,
+    height: 3,
   }
 
   const ghostHouseOutline = {
