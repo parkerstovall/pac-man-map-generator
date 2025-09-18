@@ -50,9 +50,6 @@ export function generateMap(
     }
 
     let loopBlocks = buildMapSkeleton(opts)
-    // loopBlocks = cleanMiddleAisle(loopBlocks, opts)
-    // blocks = duplicateMapHalf(loopBlocks, opts)
-    // break
     loopBlocks = cleanUpMap(loopBlocks, opts)
 
     // Max attempts is optional, but leaving it
@@ -104,40 +101,15 @@ export function generateMap(
 function buildMapSkeleton(opts: MapGeneratorOptions): BlockMap {
   const blocks: BlockMap = []
 
-  const { width, height } = opts.map.bounds
-  const halfWidth = Math.floor(width / 2)
-
-  const ghostHouseArea = {
-    x: width / 2 - 2,
-    y: height / 2 - 4,
-    width: 2,
-    height: 3,
-  }
-
-  const ghostHouseOutline = {
-    x: ghostHouseArea.x - 1,
-    y: ghostHouseArea.y - 1,
-    width: ghostHouseArea.width + 2,
-    height: ghostHouseArea.height + 2,
-  }
-
-  let pacManY = Math.floor(ghostHouseArea.y + ghostHouseArea.height + 2)
-  let pacManX = Math.floor(ghostHouseArea.x + ghostHouseArea.width / 2 - 1)
-  if (pacManX % 2 === 0) {
-    pacManX += 1 // Ensure pacManX is odd
-  }
-
-  if (pacManY % 2 === 0) {
-    pacManY += 1 // Ensure pacManY is odd
-  }
-
-  // Calculate Pac-Man starting area (same width as ghost house)
-  const pacManStartArea = {
-    x: pacManX - 2,
-    y: pacManY,
-    width: ghostHouseArea.width + 3,
-    height: 1,
-  }
+  const {
+    height,
+    halfWidth,
+    ghostHouseArea,
+    ghostHouseOutline,
+    pacManStartArea,
+    pacManX,
+    pacManY,
+  } = getStartingAreas(opts)
 
   // At first, everything is a wall
   for (let y = 0; y < height; y++) {
@@ -620,23 +592,7 @@ function validateMap(blocks: BlockMap, opts: MapGeneratorOptions): boolean {
     console.log(`Map Stats:`, stats)
   }
 
-  const { width, height } = opts.map.bounds
-  const ghostHouseArea = {
-    x: width / 2 - 2,
-    y: height / 2 - 4,
-    width: 2,
-    height: 3,
-  }
-
-  let pacManY = Math.floor(ghostHouseArea.y + ghostHouseArea.height + 2)
-  let pacManX = Math.floor(ghostHouseArea.x + ghostHouseArea.width / 2 - 1)
-  if (pacManX % 2 === 0) {
-    pacManX += 1 // Ensure pacManX is odd
-  }
-
-  if (pacManY % 2 === 0) {
-    pacManY += 1 // Ensure pacManY is odd
-  }
+  const { pacManX, pacManY } = getStartingAreas(opts)
 
   if (blocks[pacManY]?.[pacManX]?.type !== 'empty') {
     if (opts.debug) {
@@ -692,4 +648,51 @@ function getMapStats(blocks: BlockMap): MapStats {
   })
 
   return { totalPathBlocks, totalTeleporterBlocks: totalTeleporterBlocks / 2 }
+}
+
+function getStartingAreas(opts: MapGeneratorOptions) {
+  const { width, height } = opts.map.bounds
+  const halfWidth = Math.floor(width / 2)
+
+  const ghostHouseArea = {
+    x: width / 2 - 2,
+    y: height / 2 - 4,
+    width: 2,
+    height: 3,
+  }
+
+  const ghostHouseOutline = {
+    x: ghostHouseArea.x - 1,
+    y: ghostHouseArea.y - 1,
+    width: ghostHouseArea.width + 2,
+    height: ghostHouseArea.height + 2,
+  }
+
+  let pacManY = Math.floor(ghostHouseArea.y + ghostHouseArea.height + 2)
+  let pacManX = Math.floor(ghostHouseArea.x + ghostHouseArea.width / 2 - 1)
+  if (pacManX % 2 === 0) {
+    pacManX += 1 // Ensure pacManX is odd
+  }
+
+  if (pacManY % 2 === 0) {
+    pacManY += 1 // Ensure pacManY is odd
+  }
+
+  const pacManStartArea = {
+    x: pacManX - 2,
+    y: pacManY,
+    width: ghostHouseArea.width + 3,
+    height: 1,
+  }
+
+  return {
+    width,
+    height,
+    halfWidth,
+    ghostHouseArea,
+    ghostHouseOutline,
+    pacManStartArea,
+    pacManX,
+    pacManY,
+  }
 }
