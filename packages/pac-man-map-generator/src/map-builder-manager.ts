@@ -43,13 +43,9 @@ export class MapBuilderManager {
       return
     }
 
+    const { x, y } = startingDirection
+
     for (let i = 0; i < numBuilders; i++) {
-      if (!startingDirection) {
-        break
-      }
-
-      const { x, y } = startingDirection
-
       this.builders.push(
         new MapBuilder({
           x: args.x,
