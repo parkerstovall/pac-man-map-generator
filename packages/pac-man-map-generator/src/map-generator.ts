@@ -647,6 +647,8 @@ function getMapStats(blocks: BlockMap): MapStats {
     }
   })
 
+  // Teleporter blocks are counted twice due to map symmetry (e.g., left/right sides),
+  // so we divide by 2 to get the actual number of teleporter pairs.
   return { totalPathBlocks, totalTeleporterBlocks: totalTeleporterBlocks / 2 }
 }
 
