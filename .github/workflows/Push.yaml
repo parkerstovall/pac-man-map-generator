@@ -6,57 +6,21 @@ on:
       - main
 
 jobs:
-  tag-and-release:
-    
-    permissions:
-      contents: write
-        
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          cache: "npm"
-          registry-url: "https://registry.npmjs.org"
 
-      - name: Get version from package.json
-        id: pkg
-        run: |
-          cd packages/pac-man-map-generator
-          echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+  publish-package:
+    uses: 'parkerstovall/workflows/.github/workflows/Publish_NPM.yaml@main'
+    with:
+      package_directory: packages/pac-man-map-generator
+    secrets:
+      npm_token: ${{ secrets.NPM_AUTH_TOKEN }}
 
-      - name: Check if tag exists
-        id: check_tag
-        run: |
-          if git ls-remote --tags origin | grep -q "refs/tags/v${{ steps.pkg.outputs.version }}$"; then
-              echo "exists=true" >> $GITHUB_OUTPUT
-          else
-              echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create tag
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ steps.pkg.outputs.version }}"
-          git push origin "v${{ steps.pkg.outputs.version }}"
-
-      - name: Create GitHub Release
-        if: steps.check_tag.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.pkg.outputs.version }}
-          name: Release v${{ steps.pkg.outputs.version }}
-          draft: false
-          prerelease: false
-
-      - name: Publish NPM package
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          npm ci
-
-          cd packages/pac-man-map-generator
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+  update-pac-man-repo:
+    if: ${{ needs.publish-package.outputs.created_tag == 'true' }}
+    uses: 'parkerstovall/workflows/.github/workflows/Push_PackageUpdate.yaml@main'
+    needs: publish-package
+    with:
+      package_directory: packages/pac-man
+      repo: 'parkerstovall/pac-man'
+      package_name: 'pac-man-map-generator'
+    secrets:
+      repo_token: ${{ secrets.CROSS_REPO_TOKEN }}
